@@ -194,7 +194,7 @@ if cookies['userName']!='':
 #Creating our login form: 
 with st.form("login_form"):
     #If the user's credentials are already saved in a cookie, then we will want their username to already be populated in the 
-    if cookies['userName']!=None: 
+    if cookies['userName']!='': 
         username = st.text_input("Username", value=username)
         password = st.text_input("Password", type="password", value=password)
         submit_button = st.form_submit_button("Login")
