@@ -26,7 +26,7 @@ from openpyxl import Workbook
 import io
 
 #Connecting to our Pyramid Analytics database
-#os.chdir('C:\\Users\\colli\\AppData\\Local\\Programs\\Python\\Python310\\My_Python_Scripts\\Main_App_Folder_2025\\streamlit_app')
+os.chdir('C:\\Users\\colli\\AppData\\Local\\Programs\\Python\\Python310\\My_Python_Scripts\\Main_App_Folder_2025\\streamlit_app')
 conn = sqlite3.connect('Pyramid_Analytics_Database.db')
 c = conn.cursor()
 
