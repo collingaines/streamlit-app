@@ -2,10 +2,6 @@ streamlit
 pandas
 numpy
 datetime
-AgGrid
-GridOptionsBuilder
-GridUpdateMode
-JsCode
 os
 sqlite3
 openpyxl
