@@ -2,8 +2,6 @@ streamlit
 pandas
 numpy
 datetime
-os
 sqlite3
 openpyxl
-Workbook
 io
