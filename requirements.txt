@@ -1,8 +1,6 @@
 streamlit
 pandas
 numpy
-streamlit_cookies_manager
-EncryptedCookieManager
 datetime
 st_aggrid
 AgGrid
