@@ -203,7 +203,7 @@ except:
     userPosition=None
 
 #DELETE THIS! DOING THIS SO I DON'T HAVE TO LOGIN EVERYTIME I REFRESH
-userPosition='Operations Manager'
+#userPosition='Operations Manager'
 
 #============================================================================================================================================================
 #Using a "if/else" statement to return an error message if the user isn't logged in yet:
