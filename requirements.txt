@@ -2,9 +2,15 @@ streamlit
 pandas
 numpy
 streamlit_cookies_manager
+EncryptedCookieManager
 datetime
 st_aggrid
+AgGrid
+GridOptionsBuilder
+GridUpdateMode
+JsCode
 os
 sqlite3
 openpyxl
+Workbook
 io
