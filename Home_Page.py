@@ -179,7 +179,11 @@ st.title("Login Below to Get Started!")
 
 #===================================================================================================================================================================
 #If the user has logged in in the past week, then their credentials will be saved in a cookie already and we want to disply a success message:
-if cookies['userName']!=None: 
+if 'userName' not in cookies:
+    cookies['userName']=''
+
+
+if cookies['userName']!='': 
     username=cookies['userName']
     password=cookies['password']
     userPosition=cookies['userPosition']
