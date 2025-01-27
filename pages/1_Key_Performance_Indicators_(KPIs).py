@@ -10,6 +10,11 @@ import os
 #Import sqlite3 for all database functionality
 import sqlite3
 
+#=================================================================
+#Connecting to our Pyramid Analytics database
+conn = sqlite3.connect('Pyramid_Analytics_Database.db')
+c = conn.cursor()
+
 #========================================================================================================================================================================================================================================
 #========================================================================================================================================================================================================================================
 #SECTION #1 | SETTING UP THE PAGE CONFIGURATIONS & COOKIE MANAGER: 
@@ -373,14 +378,6 @@ if userPosition!=None:
 
         #==============================================================================================================================
         #Genrating our values:
-
-        #=================================================================
-        #Connecting to our Pyramid Analytics database
-        os.chdir('C:\\Users\\colli\\AppData\\Local\\Programs\\Python\\Python310\\My_Python_Scripts\\Main_App_Folder_2025\\streamlit_app')
-        conn = sqlite3.connect('Pyramid_Analytics_Database.db')
-        c = conn.cursor()
-
-
 
         #=================================================================
         #Pulling cost code data from our "Master_CostCode_Data" database
