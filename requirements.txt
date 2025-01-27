@@ -1,7 +1,7 @@
 streamlit
 pandas
 numpy
-st_aggrid
+datetime
 AgGrid
 GridOptionsBuilder
 GridUpdateMode
