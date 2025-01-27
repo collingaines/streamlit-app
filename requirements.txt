@@ -1,1 +1,10 @@
-
+streamlit
+pandas
+numpy
+streamlit_cookies_manager
+datetime
+st_aggrid
+os
+sqlite3
+openpyxl
+io
