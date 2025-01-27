@@ -202,6 +202,8 @@ try:
 except: 
     userPosition=None
 
+#DELETE THIS! DOING THIS SO I DON'T HAVE TO LOGIN EVERYTIME I REFRESH
+userPosition='Operations Manager'
 
 #============================================================================================================================================================
 #Using a "if/else" statement to return an error message if the user isn't logged in yet:
@@ -369,14 +371,6 @@ if userPosition!=None:
         #==============================================================================================================================
         #Genrating our values:
         #region
-
-
-        #=================================================================
-        #Connecting to our Pyramid Analytics database
-        os.chdir('C:\\Users\\colli\\AppData\\Local\\Programs\\Python\\Python310\\My_Python_Scripts\\Main_App_Folder_2025\\streamlit_app')
-        conn = sqlite3.connect('Pyramid_Analytics_Database.db')
-        c = conn.cursor()
-
 
         #=================================================================
         #Calculating our Trade $O/U Budget Section:
