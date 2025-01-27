@@ -176,6 +176,14 @@ USER_CREDENTIALS = {
 #Adding a title to our login form: 
 st.title("Login Below to Get Started!")
 
+
+if 'userName' in cookies:
+    username=cookies['userName']
+    password=cookies['password']
+    userPosition=cookies['userPosition']
+else:
+    cookies['userName']=None
+
 #===================================================================================================================================================================
 #If the user has logged in in the past week, then their credentials will be saved in a cookie already and we want to disply a success message:
 if cookies['userName']!=None: 
