@@ -216,7 +216,7 @@ if userPosition!=None:
         #=====================================================================================================================================================================================
         #SECTION A | Title Section:
         #region CLICK HERE TO EXPAND SECTION 
-        st.title('Bonus F Tracking')
+        st.title('Bonus Tracking')
 
 
         st.markdown(
