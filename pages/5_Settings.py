@@ -14,11 +14,27 @@ gb = GridOptionsBuilder.from_dataframe(data)
 gb.configure_default_column(editable=True)
 grid_options = gb.build()
 
-# Add a toggle button for full-screen mode
+# Render the AgGrid table within a container
+with st.container():
+    # Add a placeholder for the AgGrid table
+    table_container = st.empty()
+
+    # Render AgGrid
+    AgGrid(
+        data,
+        gridOptions=grid_options,
+        height=400,  # Set a fixed initial height
+        fit_columns_on_grid_load=True,
+        update_mode=GridUpdateMode.SELECTION_CHANGED,
+        theme="streamlit"
+    )
+
+# Add the full-screen toggle button and container
 st.markdown("""
     <style>
-    .full-screen-container {
+    #full-screen-container {
         position: relative;
+        width: 100%;
     }
     .full-screen-btn {
         position: absolute;
@@ -43,41 +59,46 @@ st.markdown("""
         height: 100% !important;
         z-index: 9999 !important;
         background: white !important;
+        padding: 10px;
+        overflow: auto;
+    }
+    .ag-theme-streamlit {
+        height: 90vh !important;  /* Full height in full-screen mode */
+        width: 100% !important;   /* Full width in full-screen mode */
     }
     </style>
-    <div class="full-screen-container" id="aggrid-container">
+    <div id="full-screen-container">
         <button class="full-screen-btn" id="toggle-fullscreen-btn">Toggle Full Screen</button>
     </div>
     """, unsafe_allow_html=True)
 
-# Add JavaScript to toggle full-screen mode
+# Add JavaScript for full-screen toggling
 st.markdown("""
     <script>
     const btn = document.getElementById('toggle-fullscreen-btn');
-    const container = document.getElementById('aggrid-container');
+    const container = document.getElementById('full-screen-container');
+    const gridDiv = document.querySelector('.ag-theme-streamlit');
+
     let isFullScreen = false;
 
     btn.addEventListener('click', () => {
         if (!isFullScreen) {
             container.classList.add('full-screen');
-            isFullScreen = true;
+            if (gridDiv) {
+                gridDiv.style.height = "90vh";
+                gridDiv.style.width = "100%";
+            }
             btn.innerText = 'Exit Full Screen';
+            isFullScreen = true;
         } else {
             container.classList.remove('full-screen');
-            isFullScreen = false;
+            if (gridDiv) {
+                gridDiv.style.height = "400px";
+                gridDiv.style.width = "100%";
+            }
             btn.innerText = 'Toggle Full Screen';
+            isFullScreen = false;
         }
     });
     </script>
     """, unsafe_allow_html=True)
-
-# Render the AgGrid table
-with st.container():
-    AgGrid(
-        data,
-        gridOptions=grid_options,
-        height=None,  # Dynamically adjust height
-        fit_columns_on_grid_load=True,
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
-        theme="streamlit"
-    )
