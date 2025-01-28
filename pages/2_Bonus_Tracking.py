@@ -1843,10 +1843,12 @@ if userPosition!=None:
         }])
 
         #===========================================================================
-        #Seeting 
+        #Setting columns to default be pinned to the left:
         gb.configure_column("Job Name", pinned="left")
         gb.configure_column("Cost Code", pinned="left")
         gb.configure_column("Cost Code Description", pinned="left")
+
+
 
 
         #===========================================================================
@@ -1859,7 +1861,7 @@ if userPosition!=None:
             enable_enterprise_modules=True,
             height=750,
             theme="streamlit",
-            # fit_columns_on_grid_load=True,
+            fit_columns_on_grid_load=True,
             allow_unsafe_jscode=True,  # Enable unsafe JS code
         )
 
