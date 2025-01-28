@@ -1849,9 +1849,6 @@ if userPosition!=None:
         gb.configure_column("Cost Code Description", pinned="left")
 
 
-        gb = GridOptionsBuilder.from_dataframe(data_values)
-        gb.configure_default_column(editable=True)
-        gb.configure_grid_options(domLayout='autoHeight')
 
         #===========================================================================
         # Render the table
@@ -1861,25 +1858,13 @@ if userPosition!=None:
             tradeSuperCostCodeData,
             gridOptions=grid_options,
             enable_enterprise_modules=True,
-            height=None,
+            height=800,
             theme="streamlit",
             #fit_columns_on_grid_load=True,
             allow_unsafe_jscode=True,  # Enable unsafe JS code
-            update_mode=GridUpdateMode.SELECTION_CHANGED
         )
 
-        # Adding a full-screen mode using Streamlit's layout feature
-        st.markdown(
-            """
-            <style>
-            .ag-theme-streamlit {
-                height: 90vh;  /* Adjust to desired height */
-                width: 100%;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+        
 
         #===========================================================================
         #Creating our excel download button!
