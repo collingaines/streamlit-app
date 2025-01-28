@@ -1849,7 +1849,7 @@ if userPosition!=None:
         gb.configure_column("Cost Code Description", pinned="left")
 
 
-        gb = GridOptionsBuilder.from_dataframe(data)
+        gb = GridOptionsBuilder.from_dataframe(data_values)
         gb.configure_default_column(editable=True)
         gb.configure_grid_options(domLayout='autoHeight')
 
