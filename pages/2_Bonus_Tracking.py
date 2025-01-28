@@ -1877,6 +1877,76 @@ if userPosition!=None:
             )        
 
 
+
+
+
+
+        from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+
+        # Sample data
+        import pandas as pd
+        data = pd.DataFrame({
+            "Column 1": [1, 2, 3, 4],
+            "Column 2": ["A", "B", "C", "D"],
+            "Column 3": [True, False, True, False]
+        })
+
+        # Build grid options
+        gb = GridOptionsBuilder.from_dataframe(data)
+        gb.configure_default_column(editable=True)
+        gb.configure_grid_options(domLayout='autoHeight')  # Adjust height dynamically
+
+        # Create the AgGrid table
+        grid_options = gb.build()
+
+        # Render the table
+        st.subheader("AgGrid Full-Screen Example")
+        AgGrid(
+            data,
+            gridOptions=grid_options,
+            height=None,  # Automatically adjust height
+            fit_columns_on_grid_load=True,  # Fit columns on load
+            update_mode=GridUpdateMode.SELECTION_CHANGED
+        )
+
+        # Adding a full-screen mode using Streamlit's layout feature
+        st.markdown(
+            """
+            <style>
+            .ag-theme-streamlit {
+                height: 90vh;  /* Adjust to desired height */
+                width: 100%;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         #endregion
 
 
