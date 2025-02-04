@@ -1788,6 +1788,8 @@ if userPosition!=None:
         # Create AgGrid options
         gb = GridOptionsBuilder.from_dataframe(df_with_footer)
 
+        
+
         #===========================================================================
         #Applying formatting to columns:
             
@@ -1847,7 +1849,6 @@ if userPosition!=None:
         gb.configure_column("Job Name", pinned="left")
         gb.configure_column("Cost Code", pinned="left")
         gb.configure_column("Cost Code Description", pinned="left")
-
 
 
         #===========================================================================
