@@ -11,7 +11,8 @@ import datetime
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 
-#===========================================================================
+
+#===============================================================================================================================================================
 #Importing our libraries for our AgGrid table:
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_aggrid.shared import JsCode
@@ -25,6 +26,95 @@ import sqlite3
 from openpyxl import Workbook
 import io
 
+
+#===============================================================================================================================================================
+#Setting up our Supabase cloud database connection and logging in:
+
+#=========================================================================
+#Connecting to our Supabase cloud database:
+from supabase import create_client, Client
+
+def connect_to_supabase(url: str, key: str) -> Client:
+    """
+    Connects to the Supabase database.
+
+    Parameters:
+    - url: The Supabase project URL.
+    - key: The Supabase API key.
+
+    Returns:
+    - A Supabase client instance.
+    """
+    supabase: Client = create_client(url, key)
+    return supabase
+
+# Example usage:
+supabase_url = 'https://tfaydxxaqmroiroazueg.supabase.co'
+supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmYXlkeHhhcW1yb2lyb2F6dWVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDU4ODMsImV4cCI6MjA1NDI4MTg4M30.kBiVOV2loWuI_wnB3kmL0CE3jZOd6oOq02-bM3R8N-Y'
+supabase_client = connect_to_supabase(supabase_url, supabase_key)
+
+#=========================================================================
+#Logging in to our Supabase cloud database:
+
+#Function to log in a user
+def login_user(email: str, password: str):
+    response = supabase_client.auth.sign_in_with_password({"email": email, "password": password})
+    return response
+
+#Logging in to our Supabase databsae:
+if __name__ == "__main__":
+    # Log in as an authenticated user
+    email = 'collingaines92@gmail.com'  # Replace with the user's email
+    password = 'Cgained41$'   # Replace with the user's password
+    login_response = login_user(email, password)
+
+
+#=========================================================================
+#Writing some functions to use to access/edit our database later in this script:
+
+#Function for reading data from a specified database table. This will return a next list, similar to how you are used to dealing with Sqlite3:
+def fetch_data_from_table(table_name: str):
+    try:
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+
+        all_data = []
+        limit = 1000  # Set the limit for each request
+        offset = 0    # Start with an offset of 0
+
+        while True:
+            # Fetch data from the specified table with pagination
+            response = supabase.table(table_name).select("*").range(offset, offset + limit - 1).execute()
+
+            # Print the raw response for debugging
+            print("Raw response:", response)
+
+            # Check if there was an error in the response
+            # if response.error:
+            #     print("Error fetching data:", response.error)
+            #     return None
+
+            # If no more data is returned, break the loop
+            if not response.data:
+                break
+
+            # Append the fetched data to the all_data list
+            all_data.extend(response.data)
+
+            # Update the offset for the next request
+            offset += limit
+
+        # Convert the list of dictionaries to a nested list
+        nested_list = [[value for value in row.values()] for row in all_data]
+
+        return nested_list
+
+    except Exception as e:
+        print("An exception occurred:", str(e))
+        return None
+
+
+#===============================================================================================================================================================
 #Connecting to our Pyramid Analytics database
 #os.chdir('C:\\Users\\colli\\AppData\\Local\\Programs\\Python\\Python310\\My_Python_Scripts\\Main_App_Folder_2025\\streamlit_app')
 conn = sqlite3.connect('Pyramid_Analytics_Database.db')
@@ -219,7 +309,7 @@ if userPosition!=None:
 
         st.markdown(
             """
-            A portal for viewing and editting settings that apply to various application pages.
+            A portal for viewing and editting settings that control various functions of the Pyramid Analytics application.
         """
         )
         st.divider()
@@ -283,9 +373,8 @@ if userPosition!=None:
         
         #=====================================================================================================================================================================================
         #=====================================================================================================================================================================================
-        #SECTION D | REPORT: Bonus Report - Trade Superintendent:
+        #SECTION C | If the "Cost Code Classifer" setting is selected:
         #region CLICK HERE TO EXPAND SECTION
-
         
         if settingType=='Cost Code Classifiers':
             st.markdown("# *Cost Code Classifiers*")
@@ -293,17 +382,21 @@ if userPosition!=None:
             st.markdown("")
             st.markdown("")
 
-            ccClassiferQuery = c.execute("SELECT * FROM Cost_Code_Classifiers")
-            ccClassiferValues = c.fetchall()
-
-            data_values = []
-
-            for i in range(len(ccClassiferValues)):
-                data_values.append([ccClassiferValues[i][1], ccClassiferValues[i][2], ccClassiferValues[i][3], ccClassiferValues[i][4], ccClassiferValues[i][5], ccClassiferValues[i][6], ccClassiferValues[i][7], ccClassiferValues[i][8], ccClassiferValues[i][9], ccClassiferValues[i][10], ccClassiferValues[i][11], ccClassiferValues[i][12], ccClassiferValues[i][13], ccClassiferValues[i][14], ccClassiferValues[i][15]])
-
-            
             #===========================================================================
             #Creating our dataframe:
+            #region
+
+            #=================================
+            #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+            data = fetch_data_from_table("Cost_Code_Classifiers")
+
+            #=================================
+            #Removing the index from our nested list of data returned by the function above:
+            data_values = []
+
+            for i in range(len(data)):
+                data_values.append([data[i][1], data[i][2], data[i][3], data[i][4], data[i][5], data[i][6], data[i][7], data[i][8], data[i][9], data[i][10], data[i][11], data[i][12], data[i][13], data[i][14], data[i][15]])
+
 
             #=================================
             #Defining column header labels for table and updating our dataframe with our data calculated above: 
@@ -315,22 +408,28 @@ if userPosition!=None:
 
             df = tradeSuperCostCodeData
 
+            #endregion
+
+
             #===========================================================================
-            # Create AgGrid options
+            #Creating our AgGrid table:
+            #region
+
             gb = GridOptionsBuilder.from_dataframe(df)
 
             #For formatting cells red/green that are above/below 0: 
             cell_style_jscode = JsCode("""
                 function(params) {
                     if (params.value < 0) {
-                        return {'color': 'black', 'backgroundColor': '#FFFF00'};
+                        return {'color': 'black', 'backgroundColor': '#e1dfdf'};
                     } else if (params.value > 0) {
-                        return {'color': 'black', 'backgroundColor': '#FFFF00'};
+                        return {'color': 'black', 'backgroundColor': '#e1dfdf'};
                     } else {
                         return null;
                     }
                 }
                 """)
+            
             
             #=================================
             #Applying the $ formatting AND red/green cell coloring to specified columns:
@@ -338,28 +437,42 @@ if userPosition!=None:
                 gb.configure_column(
                     column,
                     type=["numericColumn"],
-                    valueFormatter="x.toLocaleString('en-US', {style: 'currency', currency: 'USD', minimumFractionDigits: 2})",
+                    #valueFormatter="x.toLocaleString('en-US', {style: 'currency', currency: 'USD', minimumFractionDigits: 2})",
                     cellStyle=cell_style_jscode,  # Use JS code for cell styling
                 )
 
-            #===========================================================================
+            #=================================
             #Setting columns to default be pinned to the left:
             gb.configure_column("Cost Code", pinned="left")
             gb.configure_column("Cost Code Description", pinned="left")
             gb.configure_column("Trade", pinned="left")
             gb.configure_column("Cost Code Classifier", pinned="left")
 
-            #===========================================================================
+            #=================================
             #Configuring table to allow for column filtering:
             gb.configure_default_column(filter=True)  # Enable filtering globally
 
             gb.configure_default_column(editable=True)  # Make all columns editable
             gb.configure_selection("single", use_checkbox=True)  # Optional: Row selection
 
-            #===========================================================================
+
+            #=================================
+            #Configuring columns where we want info to be centered in the cell
+            gb.configure_column("Trade PF Cap", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Foreman PF Cap", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Project PF Cap", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Trade Force PF", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Foreman Force PF", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Project Force PF", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Omit From Trade (Y/N)", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Omit From Foreman (Y/N)", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+            gb.configure_column("Omit From Project (Y/N)", cellStyle={'textAlign': 'center', 'justifyContent': 'center', 'display': 'flex'})
+
+
+            #=================================
             # Render the table
             grid_options = gb.build()
-            st.subheader("Cost Code Classifiers")
+            # st.subheader("Cost Code Classifiers")
             grid_response = AgGrid(
                 tradeSuperCostCodeData,
                 gridOptions=grid_options,
@@ -371,9 +484,27 @@ if userPosition!=None:
                 update_mode=GridUpdateMode.VALUE_CHANGED,  # Capture cell edits
             )
 
+            #endregion
+
+
             #===========================================================================
-            # Capture edited data
-            updated_data = grid_response["data"]
+            #Creating our excel download button!
+            #region
+
+            excel_file = to_excel(tradeSuperCostCodeData)
+            st.download_button(
+                label="Download Data to Excel",
+                data=excel_file,
+                file_name="Cost Code Classifiers.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+            #endregion
+
+
+            #===========================================================================
+            #Formatting our "Submit Changes" button: 
+            #region
 
             st.markdown("""
                 <style>
@@ -395,19 +526,230 @@ if userPosition!=None:
                 </style>
             """, unsafe_allow_html=True)
 
-            # Submit button to confirm changes
+            #endregion
+
+
+            #===========================================================================
+            #If the "Submit Changes" button is clicked, then we want to update our database
             if st.button("Submit Changes"):
-                # Convert to list of tuples for SQLite
+                #========================================
+                #Capture edited data
+                updated_data = grid_response["data"]
+
+                #========================================
+                #Converting our dataframe to a list of tuples for SQLite
+                updated_values = [tuple(row) for row in updated_data.to_numpy()]  # Convert DataFrame to list of tuples
+
+                #========================================
+                #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
+                def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+                    # Create a Supabase client
+                    supabase: Client = create_client(supabase_url, supabase_key)
+                            
+                    # Truncate the specified table
+                    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                            
+                truncate_table(supabase_url, supabase_key, 'Cost_Code_Classifiers')
+
+                #========================================
+                #Creating our progress bar: 
+                # Create a progress bar
+                progress_bar = st.progress(0)
+
+                # Create a status text to show the current progress
+                status_text = st.empty()
+
+                #========================================
+                #Function to insert data into the "Cost_Code_Classifiers" table
+                def insert_data(data: dict):
+                    response = supabase_client.table('Cost_Code_Classifiers').insert(data).execute()
+                    return response
+
+                #========================================
+                #Inserting the data into our Supabase database table:
+                rowcount=1
+
+                for i in range(len(updated_values)):
+                    data_to_insert = {
+                        'id':rowcount,
+                        'costCode':updated_values[i][0],
+                        'ccDescription':updated_values[i][1],
+                        'trade':updated_values[i][2],
+                        'ccClassifier':updated_values[i][3],
+                        'alternateTrade':updated_values[i][4],
+                        'tradePFcap':updated_values[i][5],
+                        'foremanPFcap':updated_values[i][6],
+                        'projectPFcap':updated_values[i][7],
+                        'tradeForcePF':updated_values[i][8],
+                        'foremanForcePF':updated_values[i][9],
+                        'projectForcePF':updated_values[i][10],
+                        'omitFromTrade':updated_values[i][11],
+                        'omitFromForeman':updated_values[i][12],
+                        'omitFromProject':updated_values[i][13],
+                        'notes':updated_values[i][14]
+                    }
+
+                    rowcount=rowcount+1
+
+                    insert_response = insert_data(data_to_insert)
+
+                    #=================
+                    # Update the progress bar
+                    progress = (i + 1) / len(updated_values)
+                    progress_bar.progress(progress)
+                            
+                    # Update the status text
+                    status_text.text(f"Processed {i+1}/{len(updated_values)} items")
+
+                #========================================
+                #Printing a success response once the database has been updated successfully:
+                st.success("Data updated successfully!")
+
+
+
+        #endregion
+
+
+        #=====================================================================================================================================================================================
+        #=====================================================================================================================================================================================
+        #SECTION E | REPORT: Bonus Report - Foremen:
+        #region CLICK HERE TO EXPAND SECTION
+        
+        elif settingType=='Bonus Value Settings':
+            st.markdown("# *Bonus Values (Base PF, Earn Rate, etc.)*")
+            
+            st.markdown("")
+            st.markdown("")
+
+            bonusValueQuery = c.execute("SELECT * FROM Master_Bonus_Settings")
+            bonusValueValues = c.fetchall()
+
+            data_values = []
+
+            for i in range(len(bonusValueValues)):
+                data_values.append([bonusValueValues[i][1], bonusValueValues[i][2], bonusValueValues[i][3], bonusValueValues[i][4], bonusValueValues[i][5], bonusValueValues[i][6], bonusValueValues[i][7]])
+
+            
+            #===========================================================================
+            #Creating our dataframe:
+
+            #=================================
+            #Defining column header labels for table and updating our dataframe with our data calculated above: 
+            column_headers = ['Position', 'Trade', 'Cost Code Type', 'Base PF (Floor)', 'Base PF (Ceiling)', 'Bonus Earn Rate', 'Position Trade Pool Share']
+
+            #=================================
+            #Creating a pandas dataframe using the "create_dataframe" function defined in Section 1:
+            tradeSuperCostCodeData = create_dataframe(column_headers, data_values)
+
+            df = tradeSuperCostCodeData
+
+            #===========================================================================
+            # Create AgGrid options
+            gb = GridOptionsBuilder.from_dataframe(df)
+
+
+            #===========================================================================
+            #Setting columns to default be pinned to the left:
+            gb.configure_column("Position", pinned="left")
+            
+
+            #===========================================================================
+            #Configuring table to allow for column filtering:
+            gb.configure_default_column(filter=True)  # Enable filtering globally
+
+            gb.configure_default_column(editable=True)  # Make all columns editable
+            gb.configure_selection("single", use_checkbox=True)  # Optional: Row selection
+
+            #===========================================================================
+            # Render the table
+            grid_options = gb.build()
+            # st.subheader("Cost Code Classifiers")
+            grid_response = AgGrid(
+                tradeSuperCostCodeData,
+                gridOptions=grid_options,
+                enable_enterprise_modules=True,
+                height=550,
+                theme="streamlit",
+                #fit_columns_on_grid_load=True,
+                allow_unsafe_jscode=True,  # Enable unsafe JS code
+                update_mode=GridUpdateMode.VALUE_CHANGED,  # Capture cell edits
+            )
+
+            #===========================================================================
+            #Creating our excel download button!
+            excel_file = to_excel(tradeSuperCostCodeData)
+            st.download_button(
+                label="Download Data to Excel",
+                data=excel_file,
+                file_name="Bonus Values.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+
+            #===========================================================================
+            #Capture edited data
+            updated_data = grid_response["data"]
+
+
+            #===========================================================================
+            #Creating our submit button and updating our classifier database when clicked:
+
+            #==============================
+            #Formatting our button: 
+            st.markdown("""
+                <style>
+                [data-testid="stButton"] > button {
+                    width: 300px;
+                    height: 75px;
+                    background-color: #02ab21;  /* Green background color */
+                    color: black;  /* Text color */
+                    
+                }
+                .stButton > button p {
+                         font-size: 24px !important;
+                         font-weight: bold;
+                     }
+                [data-testid="stButton"] > button:hover {
+                    background-color: purple;  /* Change color on hover */
+                    color: white;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+            #==============================
+            #If the "Submit Changes" button is clicked, then we want to update our database
+            if st.button("Submit Changes"):
+                
+                #==========
+                #Convert to list of tuples for SQLite
                 updated_values = [tuple(row) for row in updated_data.to_numpy()]  # Convert DataFrame to list of tuples
 
 
-                #First let's delete all previous data from the database:
+                #==========
+                #Supabase database password: 5Nw$sLg.wpj68wQ
+
+
+                #==========
+                #Progress bar: 
+                # Create a progress bar
+                progress_bar = st.progress(0)
+
+                # Create a status text to show the current progress
+                status_text = st.empty()
+
+
+
+
+
+                #==========
+                #Let's delete all previous data from the database:
                 def deleteMultipleRecords():
                     c.execute("DELETE from Cost_Code_Classifiers")
                     conn.commit()
 
                 deleteMultipleRecords()
 
+                #==========
                 #Updating our database:
                 rowcount=1
 
@@ -435,41 +777,16 @@ if userPosition!=None:
                     rowcount=rowcount+1
                     conn.commit()
 
+                    # Update the progress bar
+                    progress = (i + 1) / len(updated_values)
+                    progress_bar.progress(progress)
+                    
+                    # Update the status text
+                    status_text.text(f"Processed {i+1}/{len(updated_values)} items")
 
-
-                st.markdown("Data updated successfully!")
-
-
-
-            #===========================================================================
-            #Creating our excel download button!
-            excel_file = to_excel(tradeSuperCostCodeData)
-            st.download_button(
-                label="Download Data to Excel",
-                data=excel_file,
-                file_name="Cost Code Classifiers.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-
-
-
-
-
-
-
-            #endregion
-
-        #endregion
-
-
-        #=====================================================================================================================================================================================
-        #=====================================================================================================================================================================================
-        #SECTION E | REPORT: Bonus Report - Foremen:
-        #region CLICK HERE TO EXPAND SECTION
-        
-        elif settingType=='Bonus Report - Foreman':
-            pass
-            
+                #==============================
+                #Printing a success response once the data has been updated successfully:
+                st.success("Data updated successfully!")
 
         #endregion
 
