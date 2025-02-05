@@ -377,7 +377,7 @@ if userPosition!=None:
         #region CLICK HERE TO EXPAND SECTION
         
         if settingType=='Cost Code Classifiers':
-            st.markdown("# *Cost Code Classifiers*")
+            # st.markdown("# *Cost Code Classifiers*")
             
             st.markdown("")
             st.markdown("")
@@ -663,7 +663,7 @@ if userPosition!=None:
             #===========================================================================
             # Render the table
             grid_options = gb.build()
-            # st.subheader("Cost Code Classifiers")
+            st.subheader("Cost Code Classifiers")
             grid_response = AgGrid(
                 tradeSuperCostCodeData,
                 gridOptions=grid_options,
