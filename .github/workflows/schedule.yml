@@ -2,7 +2,7 @@ name: Hourly API Data Fetcher
 
 on:
   schedule:
-    - cron: "30 21 * * *"  # Runs every hour at the start of the hour
+    - cron: "0 * * * *"  # Runs every hour at the start of the hour
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
