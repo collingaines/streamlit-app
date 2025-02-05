@@ -140,3 +140,150 @@ data_to_insert = {
 }
 
 insert_response = insert_data(data_to_insert)
+
+
+
+#==================================================================================================================================================
+#==================================================================================================================================================
+print('<========================================================================================================================>')
+print('<Smartsheet Equipment Inspection Sheet Info>')
+print('<========================================================================================================================>')
+print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
+#region CLICK HERE TO EXPAND THIS SECTION
+
+#========================================
+#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
+def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+    # Create a Supabase client
+    supabase: Client = create_client(supabase_url, supabase_key)
+                            
+    # Truncate the specified table
+    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                            
+truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
+
+
+#Importing the Smartsheet library so that I can interact with it's API:
+#SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
+import smartsheet
+import logging
+
+#Initialize client. Uses the API token in the environment variable "SMARTSHEET_ACCESS_TOKEN"
+smart = smartsheet.Smartsheet('gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1')
+
+#Make sure we don't miss any errors:
+smart.errors_as_exceptions(True)
+
+#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+MySheet = smart.Sheets.get_sheet('8508814782687108')
+
+#Now, let's itterate through each of the smartsheet rows and the values to a list which we can send to our database: 
+dbEntryList = []
+rowcount = 1
+
+for MyRow in MySheet.rows:
+
+    #Defining some initial values that will be pulled straight from the smartsheet: 
+    equipmentDescription = MyRow.cells[0].value
+    jobSite = MyRow.cells[1].value
+    date = MyRow.cells[2].value
+    notes = MyRow.cells[3].value
+    superintendent = MyRow.cells[4].value
+    foremanCapataz = MyRow.cells[5].value
+    hourReader = MyRow.cells[6].value
+    fuelLevel = MyRow.cells[7].value
+    fireExtinguisher = MyRow.cells[8].value
+    mirrorCondition = MyRow.cells[9].value
+    glassCondition = MyRow.cells[10].value
+    batteryCondition = MyRow.cells[11].value
+    engineOilLevel = MyRow.cells[12].value
+    hydraulicOilLevel = MyRow.cells[13].value
+    coolantLevel = MyRow.cells[14].value
+    engineBelt = MyRow.cells[15].value
+    fluidLeaks = MyRow.cells[16].value
+    hornWorking = MyRow.cells[17].value
+    backupAlarmWorking = MyRow.cells[18].value
+    lightsWorking = MyRow.cells[19].value
+    seatBeltWorking = MyRow.cells[20].value
+    brakesWorking = MyRow.cells[21].value
+    tireTrackCondition = MyRow.cells[22].value
+    forks = MyRow.cells[23].value
+    bristleCondition = MyRow.cells[24].value
+    drumCondition = MyRow.cells[25].value
+    bucketCondition = MyRow.cells[26].value
+    trailerBrakes = MyRow.cells[27].value
+    operatorName = MyRow.cells[28].value
+    foreman = MyRow.cells[29].value
+
+    #Pulling the equipment ID from the equipment description:
+    if ":" in equipmentDescription:
+        equipID = equipmentDescription[0:equipmentDescription.index(':')]
+    else:
+        equipID = 'No Eqiup ID Found'
+
+    #Pulling the job number from our jobsite value:
+    jobNum = jobSite[0:5]
+
+    #Converting our date value into our standard format (2025-09-30):
+    year = '20'+str(date)[6:8]
+    month = str(date)[0:2]
+    day = str(date)[3:5]
+
+    dateFormatted = year+'-'+month+'-'+day
+
+    #========================================
+    #Function to insert data into the "Cost_Code_Classifiers" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Equipment_Inspection_Log').insert(data).execute()
+        return response
+
+    #========================================
+    #Inserting the data into our Supabase database table:
+    data_to_insert = {
+            'id':rowcount,
+            'equipmentID':equipID,
+            'equipmentDesc':equipmentDescription,
+            'jobsite':jobSite,
+            'jobNum':jobNum,
+            'date':dateFormatted,
+            'notes':notes,
+            'superintendent':superintendent,
+            'foremanCapataz':foremanCapataz,
+            'hourReading':hourReader,
+            'fuelLevel':fuelLevel,
+            'fireExtinguisher':fireExtinguisher,
+            'mirrorCondition':mirrorCondition,
+            'glassCondition':glassCondition,
+            'batteryCondition':batteryCondition,
+            'engineOilLevel':engineOilLevel,
+            'hydraulicOilLevel':hydraulicOilLevel,
+            'coolantLevel':coolantLevel,
+            'engineBelt':engineBelt,
+            'fluidLeaks':fluidLeaks,
+            'hornWorking':hornWorking,
+            'backupAlarmWorking':backupAlarmWorking,
+            'lightsWorking':lightsWorking,
+            'seatbeltWorking':seatBeltWorking,
+            'brakesWorking':brakesWorking,
+            'tireTrackCondition':tireTrackCondition,
+            'forks':forks,
+            'bristleCondition':bristleCondition,
+            'drumCondition':drumCondition,
+            'bucketCondition':bucketCondition,
+            'trailerBrakes':trailerBrakes,
+            'operatorName':operatorName,
+            'foreman':foreman
+
+        }
+
+    rowcount=rowcount+1
+
+    insert_response = insert_data(data_to_insert)
+
+    
+
+
+
+
+
+#endregion
