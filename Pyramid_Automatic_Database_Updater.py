@@ -224,14 +224,20 @@ for MyRow in MySheet.rows:
         equipID = 'No Eqiup ID Found'
 
     #Pulling the job number from our jobsite value:
-    jobNum = jobSite[0:5]
+    if jobSite==None:
+        jobNum = 'None Found'
+    else:
+        jobNum = jobSite[0:5]
 
     #Converting our date value into our standard format (2025-09-30):
-    year = '20'+str(date)[6:8]
-    month = str(date)[0:2]
-    day = str(date)[3:5]
+    if date==None:
+        dateFormatted = 'None Found'
+    else:
+        year = '20'+str(date)[6:8]
+        month = str(date)[0:2]
+        day = str(date)[3:5]
 
-    dateFormatted = year+'-'+month+'-'+day
+        dateFormatted = year+'-'+month+'-'+day
 
     #========================================
     #Function to insert data into the "Cost_Code_Classifiers" table
