@@ -119,15 +119,22 @@ def fetch_data_from_table(table_name: str):
 #SECTION #1 | UPDATING OUR DATABASE: 
 
 
+import time
+
+startTime = time.time()
+
+
+
+
 #========================================
-#Function to insert data into the "Cost_Code_Classifiers" table
+#Inserting data into our "test" table:
 def insert_data(data: dict):
     response = supabase_client.table('test').insert(data).execute()
     return response
 
 data_to_insert = {
     'id':3,
-    'test':'auto test 2'
+    'test':str(startTime)
 }
 
 insert_response = insert_data(data_to_insert)
