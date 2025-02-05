@@ -216,7 +216,9 @@ for MyRow in MySheet.rows:
     foreman = MyRow.cells[29].value
 
     #Pulling the equipment ID from the equipment description:
-    if ":" in equipmentDescription:
+    if equipmentDescription==None:
+        equipID = 'No Eqiup ID Found'
+    elif ":" in equipmentDescription:
         equipID = equipmentDescription[0:equipmentDescription.index(':')]
     else:
         equipID = 'No Eqiup ID Found'
