@@ -6,3 +6,4 @@ openpyxl
 streamlit_cookies_manager
 streamlit-aggrid
 supabase
+smartsheet
