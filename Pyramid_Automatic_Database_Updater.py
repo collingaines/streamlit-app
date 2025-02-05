@@ -121,7 +121,12 @@ def fetch_data_from_table(table_name: str):
 
 import time
 
-startTime = time.time()
+def format_time(seconds):
+    minutes = int(seconds // 60)
+    seconds = seconds % 60
+    return f"{minutes} minutes and {seconds:.2f} seconds"
+
+startTime = format_time(time.time())
 
 
 
