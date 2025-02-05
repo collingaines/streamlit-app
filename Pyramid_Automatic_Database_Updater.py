@@ -119,16 +119,13 @@ def fetch_data_from_table(table_name: str):
 #SECTION #1 | UPDATING OUR DATABASE: 
 
 
-import time
+from datetime import datetime
 
-def format_time(seconds):
-    minutes = int(seconds // 60)
-    seconds = seconds % 60
-    return f"{minutes} minutes and {seconds:.2f} seconds"
-
-startTime = format_time(time.time())
+def get_current_time():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
+time = get_current_time()
 
 
 #========================================
@@ -139,7 +136,7 @@ def insert_data(data: dict):
 
 data_to_insert = {
     'id':3,
-    'test':str(startTime)
+    'test':str(time)
 }
 
 insert_response = insert_data(data_to_insert)
