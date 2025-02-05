@@ -1,0 +1,26 @@
+name: Hourly API Data Fetcher
+
+on:
+  schedule:
+    - cron: "30 21 * * *"  # Runs every hour at the start of the hour
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt  # Ensure you have a requirements.txt file
+          
+      - name: Run data update script
+        run: python Pyramid_Automatic_Database_Updater.py  # Replace with the actual script filename
