@@ -347,7 +347,7 @@ if not dropdown_column:
     exit()
 
 COLUMN_ID = dropdown_column.id  # Store the column ID
-current_options = dropdown_column.options  # Get existing dropdown options
+current_options = list(dropdown_column.options)  # Get existing dropdown options
 
 # Step 2: Add new options to the dropdown list
 new_options = ["New Option 1", "New Option 2"]  # Replace with your items
