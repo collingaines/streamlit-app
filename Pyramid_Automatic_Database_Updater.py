@@ -347,18 +347,19 @@ if not dropdown_column:
     exit()
 
 COLUMN_ID = dropdown_column.id  # Store the column ID
-current_options = list(dropdown_column.options)  # Get existing dropdown options
+current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
 
 # Step 2: Add new options to the dropdown list
 new_options = ["New Option 1", "New Option 2"]  # Replace with your items
 updated_options = list(set(current_options + new_options))  # Ensure unique values
 
-# Step 3: Update the column with new options
-updated_column = smartsheet.models.Column({
-    "id": COLUMN_ID,
-    "options": updated_options
-})
+# Step 3: Update the column WITHOUT specifying "id"
+updated_column = smartsheet.models.Column()
+updated_column.title = dropdown_column.title  # Keep column title the same
+updated_column.type = dropdown_column.type  # Ensure it's still a dropdown type
+updated_column.options = updated_options  # Apply new dropdown values
 
+# Step 4: Send update request
 response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
 
 print(f"Updated Dropdown List: {updated_options}")
