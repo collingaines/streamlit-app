@@ -350,7 +350,7 @@ COLUMN_ID = dropdown_column.id  # Store the column ID
 current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
 
 # Step 2: Add new options to the dropdown list
-new_options = ["New Option 3", "New Option 4"]  # Replace with your items
+new_options = equipmentInfoList  # Replace with your items
 updated_options = list(set(current_options + new_options))  # Ensure unique values
 
 # Step 3: Update the column WITHOUT specifying "id"
@@ -368,45 +368,3 @@ print(f"Updated Dropdown List: {updated_options}")
 
 
 
-#==========================================================================================================================================================
-# import smartsheet
-
-# # Initialize Smartsheet client with your API token
-# API_TOKEN = 'gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1'
-# SHEET_ID = 123456789  # Replace with your actual sheet ID
-# COLUMN_NAME = "Your Dropdown Column"  # Replace with your actual column name
-
-# # Initialize Smartsheet client
-# smartsheet_client = smartsheet.Smartsheet(API_TOKEN)
-
-# # Step 1: Get the list of columns and find the dropdown column ID
-# columns = smartsheet_client.Sheets.get_sheet(SHEET_ID).columns
-# dropdown_column = next((col for col in columns if col.title == COLUMN_NAME), None)
-
-# if not dropdown_column:
-#     print(f"Column '{COLUMN_NAME}' not found!")
-#     exit()
-
-# COLUMN_ID = dropdown_column.id  # Store the column ID
-# current_options = dropdown_column.options  # Get existing dropdown options
-
-# # Step 2: Add new options to the dropdown list
-# new_options = ["New Option 1", "New Option 2"]  # Replace with your items
-# updated_options = list(set(current_options + new_options))  # Ensure unique values
-
-# # Step 3: Update the column with new options
-# updated_column = smartsheet.models.Column({
-#     "id": COLUMN_ID,
-#     "options": updated_options
-# })
-
-# response = smartsheet_client.Sheets.update_column(SHEET_ID, COLUMN_ID, updated_column)
-
-# print(f"Updated Dropdown List: {updated_options}")
-
-
-
-
-
-
-#endregion
