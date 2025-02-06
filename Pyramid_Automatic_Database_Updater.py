@@ -343,7 +343,7 @@ columns = smart.Sheets.get_sheet('1336754816634756').columns
 dropdown_column = next((col for col in columns if col.title == "TEST"), None)
 
 if not dropdown_column:
-    print(f"Column '{"TEST"}' not found!")
+    print(f"Column not found!")
     exit()
 
 COLUMN_ID = dropdown_column.id  # Store the column ID
@@ -356,7 +356,7 @@ updated_options = list(set(current_options + new_options))  # Ensure unique valu
 # Step 3: Update the column WITHOUT specifying "id"
 updated_column = smartsheet.models.Column()
 updated_column.title = dropdown_column.title  # Keep column title the same
-updated_column.type = dropdown_column.type  # Ensure it's still a dropdown type
+updated_column.type = "PICKLIST"  # Explicitly set the column type
 updated_column.options = updated_options  # Apply new dropdown values
 
 # Step 4: Send update request
