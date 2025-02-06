@@ -350,7 +350,7 @@ COLUMN_ID = dropdown_column.id  # Store the column ID
 current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
 
 # Step 2: Add new options to the dropdown list
-new_options = ["New Option 1", "New Option 2"]  # Replace with your items
+new_options = ["New Option 3", "New Option 4"]  # Replace with your items
 updated_options = list(set(current_options + new_options))  # Ensure unique values
 
 # Step 3: Update the column WITHOUT specifying "id"
