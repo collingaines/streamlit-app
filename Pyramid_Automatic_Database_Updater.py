@@ -332,7 +332,8 @@ for MyRow in MySheet.rows:
             equipmentInfoList.append(equipmentListValue)
 
     
-
+#Sorting the equipment IDs so that they are in alphabetical order: 
+equipmentInfoList=sorted(equipmentInfoList, key=lambda x: x[0])
 
 #==========================================================================================================================================================
 #Next, let's navigate to our equipment inspection sheet and update the list of dropdown values:
@@ -347,11 +348,11 @@ if not dropdown_column:
     exit()
 
 COLUMN_ID = dropdown_column.id  # Store the column ID
-current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
+#current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
 
 # Step 2: Add new options to the dropdown list
 new_options = equipmentInfoList  # Replace with your items
-updated_options = list(set(current_options + new_options))  # Ensure unique values
+updated_options = list(set(new_options))  # Ensure unique values
 
 # Step 3: Update the column WITHOUT specifying "id"
 updated_column = smartsheet.models.Column()
