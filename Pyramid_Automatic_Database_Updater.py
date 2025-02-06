@@ -151,7 +151,7 @@ print('<========================================================================
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
-#========================================
+#==========================================================================================================================================================================
 #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
 def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
     # Create a Supabase client
@@ -162,6 +162,8 @@ def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
                             
 truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
 
+#==========================================================================================================================================================================
+#Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet
 
 #Importing the Smartsheet library so that I can interact with it's API:
 #SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
@@ -177,12 +179,13 @@ smart.errors_as_exceptions(True)
 #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
 MySheet = smart.Sheets.get_sheet('8508814782687108')
 
-#Now, let's itterate through each of the smartsheet rows and the values to a list which we can send to our database: 
+#==========================================================================================================================================================================
+#Now, let's itterate through each of the smartsheet rows and add the values to a list which we can send to our database: 
 dbEntryList = []
 rowcount = 1
 
 for MyRow in MySheet.rows:
-
+    #============================================================================
     #Defining some initial values that will be pulled straight from the smartsheet: 
     equipmentDescription = MyRow.cells[0].value
     jobSite = MyRow.cells[1].value
@@ -215,6 +218,7 @@ for MyRow in MySheet.rows:
     operatorName = MyRow.cells[28].value
     foreman = MyRow.cells[29].value
 
+    #============================================================================
     #Pulling the equipment ID from the equipment description:
     if equipmentDescription==None:
         equipID = 'No Eqiup ID Found'
@@ -223,12 +227,14 @@ for MyRow in MySheet.rows:
     else:
         equipID = 'No Eqiup ID Found'
 
+    #============================================================================
     #Pulling the job number from our jobsite value:
     if jobSite==None:
         jobNum = 'None Found'
     else:
         jobNum = jobSite[0:5]
 
+    #============================================================================
     #Converting our date value into our standard format (2025-09-30):
     if date==None:
         dateFormatted = 'None Found'
@@ -239,13 +245,13 @@ for MyRow in MySheet.rows:
 
         dateFormatted = year+'-'+month+'-'+day
 
-    #========================================
+    #============================================================================
     #Function to insert data into the "Cost_Code_Classifiers" table
     def insert_data(data: dict):
         response = supabase_client.table('Equipment_Inspection_Log').insert(data).execute()
         return response
 
-    #========================================
+    #============================================================================
     #Inserting the data into our Supabase database table:
     data_to_insert = {
             'id':rowcount,
@@ -286,9 +292,117 @@ for MyRow in MySheet.rows:
 
     rowcount=rowcount+1
 
+    #============================================================================
+    #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
 
     
+
+#endregion
+
+#=====================================================================================================================================================================================================================================================================================================================
+#=====================================================================================================================================================================================================================================================================================================================
+print('<========================================================================================================================>')
+print('<Updating Smartsheet Equipment Inspection Dropdown Data>')
+print('<========================================================================================================================>')
+print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
+#region CLICK HERE TO EXPAND THIS SECTION
+
+#==========================================================================================================================================================
+#First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+
+#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+equipmentInfoList = []
+
+for MyRow in MySheet.rows:
+    #============================================================================
+    #Defining some initial values that will be pulled straight from the smartsheet: 
+    equipmentID = MyRow.cells[0].value
+    equipmentDescription = MyRow.cells[1].value
+    equipmentStatus = MyRow.cells[7].value
+    inspectionStatus = MyRow.cells[10].value
+
+    #If this is an active piece of equipment and requires an inspection, then we will add it to our list:
+    if equipmentStatus=="Active":
+        if inspectionStatus=='Yes':
+            equipmentListValue = equipmentID+': '+equipmentDescription
+
+            equipmentInfoList.append(equipmentListValue)
+
+    
+
+
+#==========================================================================================================================================================
+#Next, let's navigate to our equipment inspection sheet and update the list of dropdown values:
+#TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
+
+# Step 1: Get the list of columns and find the dropdown column ID
+columns = smart.Sheets.get_sheet('1336754816634756').columns
+dropdown_column = next((col for col in columns if col.title == "TEST"), None)
+
+if not dropdown_column:
+    print(f"Column '{"TEST"}' not found!")
+    exit()
+
+COLUMN_ID = dropdown_column.id  # Store the column ID
+current_options = dropdown_column.options  # Get existing dropdown options
+
+# Step 2: Add new options to the dropdown list
+new_options = ["New Option 1", "New Option 2"]  # Replace with your items
+updated_options = list(set(current_options + new_options))  # Ensure unique values
+
+# Step 3: Update the column with new options
+updated_column = smartsheet.models.Column({
+    "id": COLUMN_ID,
+    "options": updated_options
+})
+
+response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
+
+print(f"Updated Dropdown List: {updated_options}")
+
+
+
+
+
+#==========================================================================================================================================================
+# import smartsheet
+
+# # Initialize Smartsheet client with your API token
+# API_TOKEN = 'gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1'
+# SHEET_ID = 123456789  # Replace with your actual sheet ID
+# COLUMN_NAME = "Your Dropdown Column"  # Replace with your actual column name
+
+# # Initialize Smartsheet client
+# smartsheet_client = smartsheet.Smartsheet(API_TOKEN)
+
+# # Step 1: Get the list of columns and find the dropdown column ID
+# columns = smartsheet_client.Sheets.get_sheet(SHEET_ID).columns
+# dropdown_column = next((col for col in columns if col.title == COLUMN_NAME), None)
+
+# if not dropdown_column:
+#     print(f"Column '{COLUMN_NAME}' not found!")
+#     exit()
+
+# COLUMN_ID = dropdown_column.id  # Store the column ID
+# current_options = dropdown_column.options  # Get existing dropdown options
+
+# # Step 2: Add new options to the dropdown list
+# new_options = ["New Option 1", "New Option 2"]  # Replace with your items
+# updated_options = list(set(current_options + new_options))  # Ensure unique values
+
+# # Step 3: Update the column with new options
+# updated_column = smartsheet.models.Column({
+#     "id": COLUMN_ID,
+#     "options": updated_options
+# })
+
+# response = smartsheet_client.Sheets.update_column(SHEET_ID, COLUMN_ID, updated_column)
+
+# print(f"Updated Dropdown List: {updated_options}")
+
 
 
 
