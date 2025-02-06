@@ -352,18 +352,18 @@ COLUMN_ID = dropdown_column.id  # Store the column ID
 
 # Step 2: Add new options to the dropdown list
 new_options = equipmentInfoList  # Replace with your items
-updated_options = list(set(new_options))  # Ensure unique values
+# updated_options = list(set(new_options))  # Ensure unique values
 
 # Step 3: Update the column WITHOUT specifying "id"
 updated_column = smartsheet.models.Column()
 updated_column.title = dropdown_column.title  # Keep column title the same
 updated_column.type = "PICKLIST"  # Explicitly set the column type
-updated_column.options = updated_options  # Apply new dropdown values
+updated_column.options = new_options  # Apply new dropdown values
 
 # Step 4: Send update request
 response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
 
-print(f"Updated Dropdown List: {updated_options}")
+print(f"Updated Dropdown List: {new_options}")
 
 
 #=====================================================================================================================================================================================================================================================================================================================
