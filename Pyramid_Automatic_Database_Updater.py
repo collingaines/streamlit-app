@@ -1072,10 +1072,13 @@ projectCoordinateDict = {}
 for j in range(len(projectData)):
     jobNum = projectData[j][1]
     jobDesc = projectData[j][2]
+    jobStatus = projectData[j][4]
     lat = projectData[j][5]
     long = projectData[j][6]
 
-    projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
+    #We only want to update our dictionary for active projects
+    if jobStatus=='active':
+        projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
 print('projectCoordinateDic is {}'.format(projectCoordinateDict))
 
@@ -1134,7 +1137,7 @@ for i in range(len(equipmentInfoTodayList)):
     #Writing our function for pulling the lat/long range for each project
     import math
 
-    def get_lat_lng_bounds(lat, lng, radius_miles=3):
+    def get_lat_lng_bounds(lat, lng, radius_miles=5):
         """Calculate the bounding box for a given latitude, longitude, and radius in miles."""
         miles_per_degree_lat = 69.0  # Approximate miles per degree of latitude
         delta_lat = radius_miles / miles_per_degree_lat
