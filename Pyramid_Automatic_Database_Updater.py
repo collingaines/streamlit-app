@@ -1176,7 +1176,7 @@ for i in range(len(equipmentInfoTodayList)):
         else:
             entryLat = 0
             entryLong = 0
-            
+
         #projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
         for key,values in projectCoordinateDict.items():
             thisJobNum = key[0]
@@ -1197,11 +1197,11 @@ for i in range(len(equipmentInfoTodayList)):
             min_lng = coordinateMaxMins.get('min_lng')
             max_lng = coordinateMaxMins.get('max_lng')
 
-            if projectLat>=min_lat and projectLat<=max_lat:
-                if projectLong>=min_lng and projectLong<=max_lng:
+            if entryLat>=min_lat and entryLat<=max_lat:
+                if entryLong>=min_lng and entryLong<=max_lng:
                     equipmentProjectList.append(thisJobValue)
 
-
+    
         
     #=========================================
     #Lastly, identifying the most frequently occuring project location in our list to determine the location of this equipment for this date: 
@@ -1285,9 +1285,12 @@ for key,values in equipmentInfoDictionary.items():
     insert_response = insert_data(data_to_insert)
 
 
+
+
 print('=====')
 print('=====')
 print('DONE')
+
 
 
 #=====================================================================================================================================================================================================================================================================================================================
