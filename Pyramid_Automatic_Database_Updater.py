@@ -181,36 +181,37 @@ def fetch_filtered_data(supabase_url: str, supabase_key: str, table: str, filter
 #Function for deleting rows from a database that have a specified value in a specified column: 
 def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, column: str, value):
     """
-    Delete all rows in a Supabase table where a specified column contains a specified value.
+    Deletes all rows from a specified Supabase table where a given column contains a specified value.
 
-    :param supabase_url: Supabase project URL.
-    :param supabase_key: Supabase API key.
-    :param table: Name of the table from which to delete rows.
-    :param column: Column name to filter on.
-    :param value: Value to match for deletion.
-    :return: Response from Supabase API.
+    Args:
+        supabase_url (str): Your Supabase project URL.
+        supabase_key (str): Your Supabase service role key.
+        table (str): The name of the table from which to delete rows.
+        column (str): The column to filter by.
+        value: The value to match for deletion (type depends on the column).
+    
+    Returns:
+        dict: The response from Supabase containing the status of the deletion.
     """
-    # Initialize Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
+    try:
+        # Create Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+        
+        # Perform deletion
+        response = supabase.table(table).delete().eq(column, value).execute()
+        
+        return response
+    except Exception as e:
+        return {"error": str(e)}
 
-    # Build and execute the delete query
-    response = supabase.table(table).delete().eq(column, value).execute()
+# Example Usage
 
-    # Check for errors
-    if hasattr(response, 'error') and response.error:
-        raise Exception(f"Supabase Error: {response.error}")
+# TABLE_NAME = "your_table_name"
+# COLUMN_NAME = "your_column_name"
+# VALUE_TO_DELETE = "your_value"
 
-    return response.data  # Return deleted rows for confirmation
-
-# Example Usage:
-#supabase_url = "your_supabase_url"
-#supabase_key = "your_supabase_key"
-# table_name = "Master_Equipment_GPS_Data"
-# column_name = "date"
-# value_to_delete = "2025-02-07"
-
-# deleted_rows = delete_rows_by_value(supabase_url, supabase_key, table_name, column_name, value_to_delete)
-# print(deleted_rows)
+# result = delete_rows_with_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", "2025-02-07")
+# print(result)
 
 
 
@@ -909,7 +910,6 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 #region CLICK HERE TO EXPAND THIS SECTION
 
 
-
 #==============================================================================================================================================================================================
 #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
 
@@ -1031,16 +1031,6 @@ print('DONE')
 #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
 
 print('CREATING A LIST OF ALL EQUIPMENT/DATES')
-#============================================================================
-#First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
-equipmentInfoTodayList = []
-
-#=========================================
-#Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
-# filters = {"column1": "value1", "column2": "value2"}
-# results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
-filters = {'date': todayCentral}
-data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
 #=========================================
 #Creating a variable for today's date:
@@ -1053,6 +1043,24 @@ def get_current_datetime():
 
 today = str(get_current_datetime())[0:10]
 
+#============================================================================
+#First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
+equipmentInfoTodayList = []
+
+#=========================================
+#Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+# filters = {"column1": "value1", "column2": "value2"}
+# results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+filters = {'date': todayCentral}
+data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+#=========================================
+#Iterating through our list of database values and updating our dictionary: 
+for i in range(len(data)):
+    entryEquipID = data[i][3]
+    equipDescr = data[i][4]
+
+    equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
 
 #=========================================
@@ -1069,14 +1077,6 @@ for j in range(len(projectData)):
 
     projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
-
-#=========================================
-#Iterating through our list of database values and updating our dictionary: 
-for i in range(len(data)):
-    entryEquipID = data[i][3]
-    equipDescr = data[i][4]
-
-    equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
 
 
@@ -1231,8 +1231,9 @@ print('DONE')
 print('UPDATING OUR DATABASE')
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
-deleted_rows = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
-print(deleted_rows)
+result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
+print(result)
+
 
 #============================================================================
 #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
