@@ -354,7 +354,8 @@ for MyRow in MySheet.rows:
         month = str(inspectionDate)[0:2]
         day = str(inspectionDate)[3:5]
 
-        dateFormatted = year+'-'+month+'-'+day
+        dateFormatted = str(inspectionDate)
+        #dateFormatted = year+'-'+month+'-'+day
 
     #============================================================================
     #Function to insert data into the "Cost_Code_Classifiers" table
