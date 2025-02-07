@@ -1209,7 +1209,7 @@ for i in range(len(equipmentInfoTodayList)):
 
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
-deleted_rows = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", today)
+deleted_rows = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
 
 #============================================================================
 #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
