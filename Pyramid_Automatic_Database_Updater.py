@@ -203,11 +203,11 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
     return response.data  # Return deleted rows for confirmation
 
 # Example Usage:
-# supabase_url = "your_supabase_url"
-# supabase_key = "your_supabase_key"
-# table_name = "your_table_name"
-# column_name = "your_column_name"
-# value_to_delete = "value_to_match"
+#supabase_url = "your_supabase_url"
+#supabase_key = "your_supabase_key"
+# table_name = "Master_Equipment_GPS_Data"
+# column_name = "date"
+# value_to_delete = "2025-02-07"
 
 # deleted_rows = delete_rows_by_value(supabase_url, supabase_key, table_name, column_name, value_to_delete)
 # print(deleted_rows)

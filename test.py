@@ -10,7 +10,7 @@ from datetime import datetime
 
 #===============================================================================================================================================================
 #Setting up our Supabase cloud database connection, logging in, AND creating some functions to use to access the data:
-#region FF
+#region
 
 #=========================================================================
 #Connecting to our Supabase cloud database:
@@ -175,17 +175,50 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
     return response.data  # Return deleted rows for confirmation
 
 # Example Usage:
-# supabase_url = "your_supabase_url"
-# supabase_key = "your_supabase_key"
-# table_name = "your_table_name"
-# column_name = "your_column_name"
-# value_to_delete = "value_to_match"
+table_name = "Master_Equipment_GPS_Data"
+column_name = "date"
+value_to_delete = "2025-02-07"
 
-# deleted_rows = delete_rows_by_value(supabase_url, supabase_key, table_name, column_name, value_to_delete)
-# print(deleted_rows)
+deleted_rows = delete_rows_by_value(supabase_url, supabase_key, table_name, column_name, value_to_delete)
+print(deleted_rows)
 
 
 
+from supabase import create_client, Client
+
+def delete_rows_with_value(supabase_url: str, supabase_key: str, table: str, column: str, value):
+    """
+    Deletes all rows from a specified Supabase table where a given column contains a specified value.
+
+    Args:
+        supabase_url (str): Your Supabase project URL.
+        supabase_key (str): Your Supabase service role key.
+        table (str): The name of the table from which to delete rows.
+        column (str): The column to filter by.
+        value: The value to match for deletion (type depends on the column).
+    
+    Returns:
+        dict: The response from Supabase containing the status of the deletion.
+    """
+    try:
+        # Create Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+        
+        # Perform deletion
+        response = supabase.table(table).delete().eq(column, value).execute()
+        
+        return response
+    except Exception as e:
+        return {"error": str(e)}
+
+# Example Usage
+
+TABLE_NAME = "your_table_name"
+COLUMN_NAME = "your_column_name"
+VALUE_TO_DELETE = "your_value"
+
+result = delete_rows_with_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", "2025-02-07")
+print(result)
 
 
 
