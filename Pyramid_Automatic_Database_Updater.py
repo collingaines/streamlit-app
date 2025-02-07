@@ -1057,12 +1057,12 @@ data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data",
 #=========================================
 #Iterating through our list of database values and updating our dictionary: 
 for i in range(len(data)):
-    entryEquipID = data[i][3]
-    equipDescr = data[i][4]
+    entryEquipID = data[i][2]
+    equipDescr = data[i][3]
 
     equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
-
+print('equipmentInfoTodayList is {}'.format(equipmentInfoTodayList))
 #=========================================
 #Accessing our project latitude/longitude coordinates by pulling from our "Master_Project_Information" table:
 projectData = fetch_data_from_table("Master_Project_Information")
@@ -1077,7 +1077,7 @@ for j in range(len(projectData)):
 
     projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
-
+print('projectCoordinateDic is {}'.format(projectCoordinateDict))
 
 
 print('=====')
@@ -1088,11 +1088,10 @@ print('DONE')
 
 
 
-print('CALCULATING THE LOCATOIN AND TOTAL HOURS OF EACH PIECE OF EQUIPMENT')
+print('CALCULATING THE LOCATION AND TOTAL HOURS OF EACH PIECE OF EQUIPMENT')
 equipmentInfoDictionary = {}
 
 for i in range(len(equipmentInfoTodayList)):
-
     entryEquipID = equipmentInfoTodayList[i][0]
     equipDescript = equipmentInfoTodayList[i][1]
 
@@ -1111,7 +1110,10 @@ for i in range(len(equipmentInfoTodayList)):
 
     for j in range(len(results)):
         #Calculating the min/max hour readings:
-        entryHourReading = float(results[j][11])
+        if results[j][10]!=None:
+            entryHourReading = float(results[j][10])
+        else:
+            entryHourReading = 0
 
         if entryHourReading>highestHourReading:
             highestHourReading=entryHourReading
@@ -1119,8 +1121,8 @@ for i in range(len(equipmentInfoTodayList)):
             lowestHourReading=entryHourReading
 
         #Updating our location GPS coordinate list for this equipment/date:
-        thisLat = results[j][7]
-        thisLong = results[j][8]
+        thisLat = results[j][6]
+        thisLong = results[j][7]
 
         locationList.append([thisLat, thisLong])
     
@@ -1168,9 +1170,13 @@ for i in range(len(equipmentInfoTodayList)):
     equipmentProjectList = []
 
     for j in range(len(locationList)):
-        entryLat = float(locationList[j][0])
-        entryLong = float(locationList[j][1])
-
+        if locationList[j][0]!=None and locationList[j][1]!=None:
+            entryLat = float(locationList[j][0])
+            entryLong = float(locationList[j][1])
+        else:
+            entryLat = 0
+            entryLong = 0
+            
         #projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
         for key,values in projectCoordinateDict.items():
             thisJobNum = key[0]
@@ -1277,8 +1283,6 @@ for key,values in equipmentInfoDictionary.items():
     #============================================================================
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
-
-
 
 
 print('=====')
