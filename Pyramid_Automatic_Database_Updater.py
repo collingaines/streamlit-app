@@ -65,6 +65,10 @@ supabase_url = 'https://tfaydxxaqmroiroazueg.supabase.co'
 supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmYXlkeHhhcW1yb2lyb2F6dWVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDU4ODMsImV4cCI6MjA1NDI4MTg4M30.kBiVOV2loWuI_wnB3kmL0CE3jZOd6oOq02-bM3R8N-Y'
 supabase_client = connect_to_supabase(supabase_url, supabase_key)
 
+# Supabase credentials
+supabase = create_client(supabase_url, supabase_key)
+
+
 #endregion
 
 #=========================================================================
@@ -218,7 +222,6 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
 
 #endregion
 
-
 #===============================================================================================================================================================
 #Generating our access token for the HCSS API:
 #region
@@ -296,7 +299,7 @@ for MyRow in MySheet.rows:
     #Defining some initial values that will be pulled straight from the smartsheet: 
     equipmentDescription = MyRow.cells[0].value
     jobSite = MyRow.cells[1].value
-    date = MyRow.cells[2].value
+    inspectionDate = MyRow.cells[2].value
     notes = MyRow.cells[3].value
     superintendent = MyRow.cells[4].value
     foremanCapataz = MyRow.cells[5].value
@@ -343,12 +346,12 @@ for MyRow in MySheet.rows:
 
     #============================================================================
     #Converting our date value into our standard format (2025-09-30):
-    if date==None:
+    if inspectionDate==None:
         dateFormatted = 'None Found'
     else:
-        year = '20'+str(date)[6:8]
-        month = str(date)[0:2]
-        day = str(date)[3:5]
+        year = '20'+str(inspectionDate)[6:8]
+        month = str(inspectionDate)[0:2]
+        day = str(inspectionDate)[3:5]
 
         dateFormatted = year+'-'+month+'-'+day
 
@@ -366,7 +369,7 @@ for MyRow in MySheet.rows:
             'equipmentDesc':equipmentDescription,
             'jobsite':jobSite,
             'jobNum':jobNum,
-            'date':dateFormatted,
+            'inspectionDate':dateFormatted,
             'notes':notes,
             'superintendent':superintendent,
             'foremanCapataz':foremanCapataz,
@@ -541,7 +544,7 @@ query = {
         #"endDate": endDate
         # "modifiedSince": "2019-08-24T14:15:22Z",
         # "cursor": "string",
-        # "limit": "1000000"
+         "limit": "1000000"
 }
 
 #Passing our token value generated above to our "HEADERS" variable:
@@ -698,10 +701,10 @@ query = {
         # "foremanId": APIID,
         # "employeeId": APIID,
         "startDate": "2021-01-01T00:00:00Z",
-        "endDate": endDate
+        "endDate": endDate,
         # "modifiedSince": "2019-08-24T14:15:22Z",
         # "cursor": "string",
-        # "limit": "1000000"
+         "limit": "1000"
 }
 
 #Passing our token value generated above to our "HEADERS" variable:
@@ -842,6 +845,8 @@ def insert_data(data: dict):
 #Inserting the data into our Supabase database table:
 rowcount = 1
 
+dataList = []
+
 for i in range(len(timecardInfoList)):
     data_to_insert = {
         'id':rowcount,
@@ -870,9 +875,21 @@ for i in range(len(timecardInfoList)):
 
     rowcount=rowcount+1
 
+    dataList.append(data_to_insert)
     #============================================================================
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
+
+
+
+
+# def batch_update(table_name, data, batch_size=1000):
+#     for i in range(0, len(data), batch_size):
+#         batch = data[i : i + batch_size]
+#         response = supabase.table(table_name).upsert(batch).execute()
+#         print(f"Batch {i//batch_size + 1} inserted, status: {response}")
+
+# batch_update("Master_Timecard_Information", dataList)
 
 
 
@@ -896,6 +913,7 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 #==============================================================================================================================================================================================
 #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
 
+print('PULLING EQUIPMENT GPS DATA FROM API AND UPDATING DATABASE')
 #==========================================================================================================================
 #Creating a list of timecard values for use later in calculating the timecard values for each foreman:
 #============================================
@@ -949,6 +967,17 @@ if response.status_code == 200:
 
 #=======================================================================================================================================
 #Next, let's update our "Equipment_GPS_All_Data" database:
+#=========================================
+#Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
+from datetime import datetime
+import pytz
+
+def get_central_time():
+    central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
+    central_time = datetime.now(central_tz)  # Get current time in Central Time
+    return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
+
+todayCentral=str(get_central_time())[0:10]
 
 #============================================================================
 #First let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
@@ -969,8 +998,10 @@ def insert_data(data: dict):
 #Inserting the data into our Supabase database table:
 
 for i in range(len(equipmentInfoList)):
+
     data_to_insert = {
         'id':rowcount,
+        'date':todayCentral,
         'equipmentHCSSAPIid':equipmentInfoList[i][0],
         'equipID':equipmentInfoList[i][1],
         'equipDescription':equipmentInfoList[i][2],
@@ -993,18 +1024,23 @@ for i in range(len(equipmentInfoList)):
     insert_response = insert_data(data_to_insert)
 
 
-
+print('=====')
+print('=====')
+print('DONE')
 #==============================================================================================================================================================================================
 #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
 
-
+print('CREATING A LIST OF ALL EQUIPMENT/DATES')
 #============================================================================
 #First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
 equipmentInfoTodayList = []
 
 #=========================================
-#Puling data from our database
-data = fetch_data_from_table("Equipment_GPS_All_Data")
+#Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+# filters = {"column1": "value1", "column2": "value2"}
+# results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+filters = {'date': todayCentral}
+data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
 #=========================================
 #Creating a variable for today's date:
@@ -1017,17 +1053,6 @@ def get_current_datetime():
 
 today = str(get_current_datetime())[0:10]
 
-#=========================================
-#Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
-from datetime import datetime
-import pytz
-
-def get_central_time():
-    central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
-    central_time = datetime.now(central_tz)  # Get current time in Central Time
-    return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
-
-todayCentral=str(get_central_time())[0:10]
 
 
 #=========================================
@@ -1048,22 +1073,22 @@ for j in range(len(projectData)):
 #=========================================
 #Iterating through our list of database values and updating our dictionary: 
 for i in range(len(data)):
-    if data[i][11]!=None:
-        entryDate = data[i][11][0:10]
-    else:
-        entryDate = 'None'
+    entryEquipID = data[i][3]
+    equipDescr = data[i][4]
 
-    if entryDate==today:
-        entryEquipID = data[i][2]
-        equipDescr = data[i][3]
-
-        equipmentInfoTodayList.append([entryEquipID, equipDescr])
+    equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
 
 
+print('=====')
+print('=====')
+print('DONE')
 #============================================================================
 #Next, let's iterate through our list created above and calculate the total hours and location for each:
 
+
+
+print('CALCULATING THE LOCATOIN AND TOTAL HOURS OF EACH PIECE OF EQUIPMENT')
 equipmentInfoDictionary = {}
 
 for i in range(len(equipmentInfoTodayList)):
@@ -1075,7 +1100,7 @@ for i in range(len(equipmentInfoTodayList)):
     #Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
     # filters = {"column1": "value1", "column2": "value2"}
     # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
-    filters = {"equipID": entryEquipID}
+    filters = {"equipID": entryEquipID, 'date': todayCentral}
     results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
     #=========================================
@@ -1084,29 +1109,20 @@ for i in range(len(equipmentInfoTodayList)):
     highestHourReading = 0
     locationList = []
 
-    for j in range(len(data)):
-        thisEquipID = data[j][2]
-        if data[j][11]!=None:
-            thisDate = data[j][11][0:10]
-        else:
-            thisDate = "None"
+    for j in range(len(results)):
+        #Calculating the min/max hour readings:
+        entryHourReading = float(results[j][11])
 
-        #We only want to evaluate database values for the selected piece of equipment/today's date: 
-        if thisEquipID==entryEquipID:
-            if thisDate==today:
-                #Calculating the min/max hour readings:
-                entryHourReading = float(data[j][10])
+        if entryHourReading>highestHourReading:
+            highestHourReading=entryHourReading
+        if entryHourReading<lowestHourReading:
+            lowestHourReading=entryHourReading
 
-                if entryHourReading>highestHourReading:
-                    highestHourReading=entryHourReading
-                if entryHourReading<lowestHourReading:
-                    lowestHourReading=entryHourReading
+        #Updating our location GPS coordinate list for this equipment/date:
+        thisLat = results[j][7]
+        thisLong = results[j][8]
 
-                #Updating our location GPS coordinate list for this equipment/date:
-                thisLat = data[j][6]
-                thisLong = data[j][7]
-
-                locationList.append([thisLat, thisLong])
+        locationList.append([thisLat, thisLong])
     
     #=========================================
     #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
@@ -1204,12 +1220,19 @@ for i in range(len(equipmentInfoTodayList)):
     equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
 
 
+print('=====')
+print('=====')
+print('DONE')
 #==============================================================================================================================================================================================
 #Next, let's enter the values above into our "Master Equipment GPS Data" database
 
+
+
+print('UPDATING OUR DATABASE')
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
 deleted_rows = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
+print(deleted_rows)
 
 #============================================================================
 #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
@@ -1240,7 +1263,7 @@ for key,values in equipmentInfoDictionary.items():
     #Inserting the data into our Supabase database table:
     data_to_insert = {
         'id':rowcount,
-        'date':todayDate,
+        'date':todayCentral,
         'equipID':equipID,
         'equipDesc':equipDesc,
         'totalGPShours':totalEquipHours,
@@ -1257,10 +1280,9 @@ for key,values in equipmentInfoDictionary.items():
 
 
 
-
-
-
-#endregion
+print('=====')
+print('=====')
+print('DONE')
 
 
 #=====================================================================================================================================================================================================================================================================================================================
