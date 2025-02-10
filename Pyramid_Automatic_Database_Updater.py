@@ -109,7 +109,7 @@ def fetch_data_from_table(table_name: str):
             response = supabase.table(table_name).select("*").range(offset, offset + limit - 1).execute()
 
             # Print the raw response for debugging
-            print("Raw response:", response)
+            #print("Raw response:", response)
 
             # Check if there was an error in the response
             # if response.error:
@@ -223,6 +223,7 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
 
 #endregion
 
+
 #===============================================================================================================================================================
 #Generating our access token for the HCSS API:
 #region
@@ -248,10 +249,32 @@ data = response.json()
 
 token = data.get('access_token')
 
+#Passing our token value generated above to our "HEADERS" variable:
+HEADERS = {
+"Authorization": "Bearer {}".format(token)
+}
+
 #endregion
 
 
+#===============================================================================================================================================================
+#Connecting to the Smartsheet API:
+#region
 
+#Importing the Smartsheet library so that I can interact with it's API:
+#SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
+import smartsheet
+import logging
+
+#Initialize client. Uses the API token in the environment variable "SMARTSHEET_ACCESS_TOKEN"
+smart = smartsheet.Smartsheet('gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1')
+
+#Make sure we don't miss any errors:
+smart.errors_as_exceptions(True)
+
+
+
+#endregion
 
 
 #=====================================================================================================================================================================================================================================================================================================================
@@ -259,7 +282,7 @@ token = data.get('access_token')
 print('<========================================================================================================================>')
 print('<Smartsheet Equipment Inspection Sheet Info>')
 print('<========================================================================================================================>')
-print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
+print('Connecting to the Smartsheet API and pulling data from the "Equipment Inspection" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 #==========================================================================================================================================================================
@@ -275,17 +298,6 @@ truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
 
 #==========================================================================================================================================================================
 #Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet
-
-#Importing the Smartsheet library so that I can interact with it's API:
-#SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
-import smartsheet
-import logging
-
-#Initialize client. Uses the API token in the environment variable "SMARTSHEET_ACCESS_TOKEN"
-smart = smartsheet.Smartsheet('gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1')
-
-#Make sure we don't miss any errors:
-smart.errors_as_exceptions(True)
 
 #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
 MySheet = smart.Sheets.get_sheet('8508814782687108')
@@ -416,9 +428,88 @@ for MyRow in MySheet.rows:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Updating Smartsheet Equipment Inspection & Fuel Log Dropdown Data>')
+print('<Updating "Master_Equipment_Asset_List" Database Table from our "Master Equipment List" Smartsheet>')
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
+#region CLICK HERE TO EXPAND THIS SECTION
+
+#==========================================================================================================================================================================
+#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
+def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+    # Create a Supabase client
+    supabase: Client = create_client(supabase_url, supabase_key)
+                            
+    # Truncate the specified table
+    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                            
+truncate_table(supabase_url, supabase_key, 'Master_Equipment_Asset_List')
+
+#==========================================================================================================================================================
+#First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+
+#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+rowcount=1
+
+for MyRow in MySheet.rows:
+    #============================================================================
+    #Defining some initial values that will be pulled straight from the smartsheet: 
+    equipmentID = MyRow.cells[0].value
+    equipmentDescription = MyRow.cells[1].value
+    equipmentCategory = MyRow.cells[2].value
+    make = MyRow.cells[3].value
+    model = MyRow.cells[4].value
+    year = MyRow.cells[5].value
+    serialNumber = MyRow.cells[6].value
+    equipmentStatus = MyRow.cells[7].value
+    purchaseDate = MyRow.cells[8].value
+    sellDate = MyRow.cells[9].value
+    inspectionStatus = MyRow.cells[10].value
+    chargeType = MyRow.cells[11].value
+
+    #============================================================================
+    #Function to insert data into the "Cost_Code_Classifiers" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Equipment_Asset_List').insert(data).execute()
+        return response
+
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+    data_to_insert = {
+            'id':rowcount,
+            'equipID':equipmentID,
+            'equipDesc':equipmentDescription,
+            'equipCategory':equipmentCategory,
+            'make':make,
+            'model':model,
+            'year':year,
+            'serialNum':serialNumber,
+            'status':equipmentStatus,
+            'purchaseDate':purchaseDate,
+            'sellDate':sellDate,
+            'inspectionsReqd':inspectionStatus,
+            'chargeType':chargeType
+
+        }
+
+    rowcount=rowcount+1
+
+    #============================================================================
+    #Using the "insert_data" function defined at the top of this script
+    insert_response = insert_data(data_to_insert)
+
+
+
+#endregion
+
+
+#=====================================================================================================================================================================================================================================================================================================================
+#=====================================================================================================================================================================================================================================================================================================================
+print('<========================================================================================================================>')
+print('<Updating Smartsheet Equipment Inspection & Fuel Log Dropdown Data>')
+print('<========================================================================================================================>')
+print('Connecting to the Smartsheet API and updating dropdown lists...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 #==========================================================================================================================================================
@@ -476,7 +567,7 @@ updated_column.options = new_options  # Apply new dropdown values
 # Step 4: Send update request
 response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
 
-print(f"Updated Dropdown List: {new_options}")
+#print(f"Updated Dropdown List: {new_options}")
 
 #==========================================================================================================================================================
 #Next, let's navigate to our equipment fuel log smartsheet and update the list of dropdown values:
@@ -506,10 +597,9 @@ updated_column.options = new_options  # Apply new dropdown values
 # Step 4: Send update request
 response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
 
-print(f"Updated Dropdown List: {new_options}")
+#print(f"Updated Dropdown List: {new_options}")
 
 #endregion
-
 
 
 #=====================================================================================================================================================================================================================================================================================================================
@@ -517,7 +607,7 @@ print(f"Updated Dropdown List: {new_options}")
 print('<========================================================================================================================>')
 print('<Connecting to the HCSS API, pulling all of our project data, and updating our database and smartsheet "Master Project Info List">')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
+print('Connecting to the HCSS API and updating our "Master_Project_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 
@@ -639,13 +729,12 @@ for i in range(len(projectInfoList)):
 #endregion
 
 
-
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
 print('<Connecting to the HCSS API, pulling all of our timecard data, and updating our database>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
+print('Connecting to the HCSS API and updating our "Master_Timecard_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 
@@ -901,27 +990,175 @@ for i in range(len(timecardInfoList)):
 #endregion
 
 
+#=====================================================================================================================================================================================================================================================================================================================
+#=====================================================================================================================================================================================================================================================================================================================
+print('<========================================================================================================================>')
+print('<Connecting to the HCSS API, pulling all of our E360 data, and updating our database>')
+print('<========================================================================================================================>')
+print('Connecting to the HCSS API and updating our "Equipment_E360_All_Data" database table..')
+#region CLICK HERE TO EXPAND THIS SECTION
+
+#============================================================================================================================================================
+#First, let's make a list of all equipment IDs that we want to track data for by pulling data from our "Master Equipment List" smartsheet via an API call:
+#region
+
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+equipIDList = []
+
+for MyRow in MySheet.rows:
+    equipmentID = MyRow.cells[0].value
+    status = MyRow.cells[7].value
+
+    if status=='Active':
+        equipIDList.append(equipmentID)
+
+#endregion
+
+#============================================================================================================================================================
+#Next, let's create a variable that includes today's date in US central time:
+#region
+
+from datetime import datetime
+import pytz
+
+def get_central_time():
+    central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
+    central_time = datetime.now(central_tz)  # Get current time in Central Time
+    return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
+
+todayCentral=str(get_central_time())[0:10]
+
+#endregion
+
+#============================================================================================================================================================
+#Next, let's iterate through our list of equipment created above and pull the E360 HCSS API data for each. 
+#region
+
+#For some reason, the E360 API endpoint won't pull all the equipment data for each piece of equipment bc it has a 1000 result max limit, so we will have to call the HCSS API for each equipment individually:
+
+#============================================
+#Connecting to the E360 endpoint of the HCSS API:
+HCSS_API_ENDPOINT = "https://api.hcssapps.com/e360/api/v1/equipment"
+
+
+#============================================
+#Iterrating through our 
+rowcount=1
+
+for i in range(len(equipIDList)):
+    entryID = equipIDList[i]
+
+    #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
+    query = {
+            # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+            # "foremanId": APIID,
+            # "employeeId": APIID,
+            #"startDate": "2021-01-01T00:00:00Z",
+            #"endDate": endDate
+            # "modifiedSince": "2019-08-24T14:15:22Z",
+            # "cursor": "string",
+             "equipmentCode": entryID,
+             "limit": "1000000"
+    }
+
+    response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+
+    #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+    if response.status_code == 200:
+
+        data = response.json()
+
+        results = data.get('results')
+
+        #Some equipment on our asset list won't be in E360, so we want to skip this entry if a blank list is returned from our API call: 
+        if data.get("data")!=[]:
+            #Pulling all of our E360 values from our API call results and saving them to a variable:
+            apiID = data.get("data")[0].get("id")
+            equipmentID = data.get("data")[0].get("equipmentId")
+            businessUnitID = data.get("data")[0].get("businessUnitId")
+            code = data.get("data")[0].get("code")
+            equipmentType = data.get("data")[0].get("equipmentType")
+            description = data.get("data")[0].get("description")
+            accountingCode = data.get("data")[0].get("accountingCode")
+            make = data.get("data")[0].get("make")
+            model = data.get("data")[0].get("model")
+            year = data.get("data")[0].get("year")
+            vin = data.get("data")[0].get("vin")
+            serialNo = data.get("data")[0].get("serialNo")
+            hourMeter = data.get("data")[0].get("hourMeter")
+            hourMeterDate = data.get("data")[0].get("hourMeterDate")
+            odometer = data.get("data")[0].get("odometer")
+            enabled = data.get("data")[0].get("enabled")
+            rentalFlag = data.get("data")[0].get("rentalFlag")
+            jobCode = data.get("data")[0].get("jobCode")
+            locationName = data.get("data")[0].get("locationName")
+
+            #============================================================================
+            #Function to insert data into the "Equipment_E360_All_Data" table
+            def insert_data(data: dict):
+                response = supabase_client.table('Equipment_E360_All_Data').insert(data).execute()
+                return response
+
+            #============================================================================
+            #Inserting the data into our Supabase database table:
+            data_to_insert = {
+                    'id':rowcount,
+                    'date':todayCentral,
+                    'apiID':apiID,
+                    'equipmentID':equipmentID,
+                    'businessUnitID':businessUnitID,
+                    'code':code,
+                    'equipmentType':equipmentType,
+                    'description':description,
+                    'accountingCode':accountingCode,
+                    'make':make,
+                    'model':model,
+                    'year':year,
+                    'vin':vin,
+                    'serialNo':serialNo,
+                    'hourMeter':hourMeter,
+                    'hourMeterDate':hourMeterDate,
+                    'odometer':odometer,
+                    'enabled':enabled,
+                    'rentalFlag':rentalFlag,
+                    'jobCode':jobCode,
+                    'locationName':locationName
+
+                }
+
+            rowcount=rowcount+1
+
+            #============================================================================
+            #Using the "insert_data" function defined at the top of this script
+            insert_response = insert_data(data_to_insert)
+
+    else:
+        print('Unable to retreive data for equipment: {}'.format(entryID))
+
+#endregion
+
+
+#endregion
+
 
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
 print('<Connecting to the HCSS API, pulling all of our GPS hour/location data, and updating our database>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
+print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and "Master_Equipment_GPS_Data" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
-
 
 #==============================================================================================================================================================================================
 #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
+#region
 
-print('PULLING EQUIPMENT GPS DATA FROM API AND UPDATING DATABASE')
-#==========================================================================================================================
-#Creating a list of timecard values for use later in calculating the timecard values for each foreman:
-#============================================
-#Connecting to the timecard endpoint of the HCSS API:
+#=========================================================================================
+#Connecting to the telematics endpoint of the HCSS API and creating a list of values to be used in updating our "Equipment GPS All Data" database:
 HCSS_API_ENDPOINT = "https://api.hcssapps.com/telematics/api/v1/equipment"
 
-
+#=========================================
 #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
 query = {
         # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
@@ -934,14 +1171,17 @@ query = {
         # "limit": "1000000"
 }
 
+#=========================================
 #Passing our token value generated above to our "HEADERS" variable:
 HEADERS = {
 "Authorization": "Bearer {}".format(token)
 }
 
+#=========================================
 #Finally, let's generate store our response which includes all of our raw data to a variable:
 response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
 
+#=========================================
 #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
 if response.status_code == 200:
     data = response.json()
@@ -962,13 +1202,14 @@ if response.status_code == 200:
         lastHourMeterReadingInSeconds = results[i].get('lastHourMeterReadingInSeconds')
         lastHourMeterReadingInHours = results[i].get('lastHourMeterReadingInHours')
         lastHourReadingDateTime = results[i].get('lastHourMeterReadingDateTime')
+        lastEngineStatus = results[i].get('lastEngineStatus')
+        lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
 
-        equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime])
+
+        equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
 
 
-#=======================================================================================================================================
-#Next, let's update our "Equipment_GPS_All_Data" database:
-#=========================================
+#=========================================================================================
 #Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
 from datetime import datetime
 import pytz
@@ -980,8 +1221,8 @@ def get_central_time():
 
 todayCentral=str(get_central_time())[0:10]
 
-#============================================================================
-#First let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+#=========================================================================================
+#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
 
 #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
 data = fetch_data_from_table("Equipment_GPS_All_Data")
@@ -989,15 +1230,15 @@ data = fetch_data_from_table("Equipment_GPS_All_Data")
 rowcount = len(data)+1
 
 
-#============================================================================
+#=========================================================================================
 #Function to insert data into the "Equipment_GPS_All_Data" table
 def insert_data(data: dict):
     response = supabase_client.table('Equipment_GPS_All_Data').insert(data).execute()
     return response
 
-#============================================================================
-#Inserting the data into our Supabase database table:
 
+#=========================================================================================
+#Inserting the data into our Supabase database table:
 for i in range(len(equipmentInfoList)):
 
     data_to_insert = {
@@ -1013,7 +1254,9 @@ for i in range(len(equipmentInfoList)):
         'lastLocationDateTime':equipmentInfoList[i][7],
         'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
         'lastHourMeterReadingInHours':equipmentInfoList[i][9],
-        'lastHourReadingDateTime':equipmentInfoList[i][10]
+        'lastHourReadingDateTime':equipmentInfoList[i][10],
+        'lastEngineStatus':equipmentInfoList[i][11],
+        'lastEngineStatusDateTime':equipmentInfoList[i][12]
 
 
     }
@@ -1025,15 +1268,14 @@ for i in range(len(equipmentInfoList)):
     insert_response = insert_data(data_to_insert)
 
 
-print('=====')
-print('=====')
-print('DONE')
+#endregion
+
+
 #==============================================================================================================================================================================================
 #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
+#region
 
-print('CREATING A LIST OF ALL EQUIPMENT/DATES')
-
-#=========================================
+#=========================================================================================
 #Creating a variable for today's date:
 from datetime import datetime
 
@@ -1044,18 +1286,18 @@ def get_current_datetime():
 
 today = str(get_current_datetime())[0:10]
 
-#============================================================================
+#=========================================================================================
 #First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
 equipmentInfoTodayList = []
 
-#=========================================
+#=========================================================================================
 #Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
 # filters = {"column1": "value1", "column2": "value2"}
 # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
 filters = {'date': todayCentral}
 data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
-#=========================================
+#=========================================================================================
 #Iterating through our list of database values and updating our dictionary: 
 for i in range(len(data)):
     entryEquipID = data[i][2]
@@ -1063,8 +1305,8 @@ for i in range(len(data)):
 
     equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
-print('equipmentInfoTodayList is {}'.format(equipmentInfoTodayList))
-#=========================================
+
+#=========================================================================================
 #Accessing our project latitude/longitude coordinates by pulling from our "Master_Project_Information" table:
 projectData = fetch_data_from_table("Master_Project_Information")
 
@@ -1084,15 +1326,8 @@ for j in range(len(projectData)):
 print('projectCoordinateDic is {}'.format(projectCoordinateDict))
 
 
-print('=====')
-print('=====')
-print('DONE')
-#============================================================================
+#=========================================================================================
 #Next, let's iterate through our list created above and calculate the total hours and location for each:
-
-
-
-print('CALCULATING THE LOCATION AND TOTAL HOURS OF EACH PIECE OF EQUIPMENT')
 equipmentInfoDictionary = {}
 
 for i in range(len(equipmentInfoTodayList)):
@@ -1135,10 +1370,54 @@ for i in range(len(equipmentInfoTodayList)):
     totalEquipHours = highestHourReading-lowestHourReading
 
     #=========================================
+    #Pulling our equipment location from our E360 datatabase
+
+    #Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+    # filters = {"column1": "value1", "column2": "value2"}
+    # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+    # filters = {"code": entryEquipID, 'date': todayCentral}
+    # results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_E360_All_Data", filters)
+
+    # equipmentProjectList = []
+
+    # for j in range(len(results)):
+    #     #Calculating the min/max hour readings:
+    #     jobCode = results[j][18]
+
+    #     equipmentProjectList.append(jobCode)
+
+
+    #=========================================
+    #Lastly, identifying the most frequently occuring project location in our list to determine the location of this equipment for this date: 
+    from collections import Counter
+
+    def most_frequent(lst):
+        """
+        Returns the most frequently occurring value in the list.
+        If there are multiple values with the same highest frequency, returns one of them.
+        """
+        if not lst:
+            return None  # Return None for empty lists
+        
+        counter = Counter(lst)
+        return counter.most_common(1)[0][0]  # Get the most common value
+    
+    project = most_frequent(equipmentProjectList)
+
+    
+    #=========================================
+    #Updating our dictionary of values to be entered into our database:
+    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
+
+
+
+
+
+    #=========================================
     #Writing our function for pulling the lat/long range for each project
     import math
 
-    def get_lat_lng_bounds(lat, lng, radius_miles=5):
+    def get_lat_lng_bounds(lat, lng, radius_miles=3):
         """Calculate the bounding box for a given latitude, longitude, and radius in miles."""
         miles_per_degree_lat = 69.0  # Approximate miles per degree of latitude
         delta_lat = radius_miles / miles_per_degree_lat
@@ -1153,21 +1432,6 @@ for i in range(len(equipmentInfoTodayList)):
             "max_lng": lng + delta_lng,
         }
 
-    #Example usage:
-    # latitude = 37.7749  # San Francisco, CA
-    # longitude = -122.4194
-    # radius = 3  # miles
-
-    # bounds = get_lat_lng_bounds(latitude, longitude, radius)
-    # print(bounds)
-
-    #Example output:
-    # {
-    # 'min_lat': 37.7314, 
-    # 'max_lat': 37.8184, 
-    # 'min_lng': -122.4609, 
-    # 'max_lng': -122.3779
-    # }
 
     #=========================================
     #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
@@ -1230,19 +1494,21 @@ for i in range(len(equipmentInfoTodayList)):
     equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
 
 
-print('=====')
-print('=====')
-print('DONE')
+# print('=====')
+# print('=====')
+# print('DONE')
+
+#endregion
+
+
 #==============================================================================================================================================================================================
 #Next, let's enter the values above into our "Master Equipment GPS Data" database
+#region
 
-
-
-print('UPDATING OUR DATABASE')
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
 result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
-print(result)
+#print(result)
 
 
 #============================================================================
@@ -1288,13 +1554,10 @@ for key,values in equipmentInfoDictionary.items():
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
 
+#endregion
 
 
-
-print('=====')
-print('=====')
-print('DONE')
-
+#endregion
 
 
 #=====================================================================================================================================================================================================================================================================================================================
