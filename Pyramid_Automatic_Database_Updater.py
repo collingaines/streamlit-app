@@ -1265,7 +1265,7 @@ for i in range(len(equipmentInfoTodayList)):
                 projectLong = 0
 
             #Calculating our lat/long max/min ranges using our function defined above: 
-            coordinateMaxMins = get_lat_lng_bounds(projectLat, projectLong, radius_miles=3)
+            coordinateMaxMins = get_lat_lng_bounds(projectLat, projectLong, radius_miles=1.5)
             min_lat = coordinateMaxMins.get('min_lat')
             max_lat = coordinateMaxMins.get('max_lat')
             min_lng = coordinateMaxMins.get('min_lng')
