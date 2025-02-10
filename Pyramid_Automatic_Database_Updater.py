@@ -1217,48 +1217,6 @@ for i in range(len(equipmentInfoTodayList)):
     #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
     totalEquipHours = highestHourReading-lowestHourReading
 
-    #=========================================
-    #Pulling our equipment location from our E360 datatabase
-
-    #Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
-    # filters = {"column1": "value1", "column2": "value2"}
-    # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
-    # filters = {"code": entryEquipID, 'date': todayCentral}
-    # results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_E360_All_Data", filters)
-
-    # equipmentProjectList = []
-
-    # for j in range(len(results)):
-    #     #Calculating the min/max hour readings:
-    #     jobCode = results[j][18]
-
-    #     equipmentProjectList.append(jobCode)
-
-
-    #=========================================
-    #Lastly, identifying the most frequently occuring project location in our list to determine the location of this equipment for this date: 
-    from collections import Counter
-
-    def most_frequent(lst):
-        """
-        Returns the most frequently occurring value in the list.
-        If there are multiple values with the same highest frequency, returns one of them.
-        """
-        if not lst:
-            return None  # Return None for empty lists
-        
-        counter = Counter(lst)
-        return counter.most_common(1)[0][0]  # Get the most common value
-    
-    project = most_frequent(equipmentProjectList)
-
-    
-    #=========================================
-    #Updating our dictionary of values to be entered into our database:
-    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
-
-
-
 
 
     #=========================================
@@ -1342,9 +1300,6 @@ for i in range(len(equipmentInfoTodayList)):
     equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
 
 
-# print('=====')
-# print('=====')
-# print('DONE')
 
 #endregion
 
