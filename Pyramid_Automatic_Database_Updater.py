@@ -1347,7 +1347,7 @@ for i in range(len(equipmentInfoTodayList)):
     
     #=========================================
     #Updating our dictionary of values to be entered into our database:
-    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [totalEquipHours, project]
+    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
 
 
 
