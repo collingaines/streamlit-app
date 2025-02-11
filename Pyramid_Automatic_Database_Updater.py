@@ -1280,8 +1280,8 @@ for j in range(len(projectData)):
     jobNum = projectData[j][1]
     jobDesc = projectData[j][2]
     jobStatus = projectData[j][4]
-    lat = projectData[j][5]
-    long = projectData[j][6]
+    lat = float(projectData[j][5])
+    long = float(projectData[j][6])
 
     #We only want to update our dictionary for active projects
     if jobStatus=='active':
