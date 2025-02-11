@@ -3,6 +3,7 @@
 #SECTION #0 | IMPORTING OUR PYTHON LIBRARIES: 
 #region CLICK HERE TO EXPAND SECTION
 
+print('IMPORTING PYTHON LIBRARIES')
 #===============================================================================================================================================================
 #Importing misc libraries
 #region
@@ -36,11 +37,14 @@ import io
 
 #endregion
 
+print('SUCCESS')
 
+#endregion
 #===============================================================================================================================================================
 #Defining some misc functions for use later in script:
 #region
 
+print('DEFINING MISC FUNCTIONS FOR USE THROUGHOUT SCRIPT')
 #================================================================
 #Defining our function to pull an address from GPS coordinates:
 from geopy.geocoders import Nominatim
@@ -60,11 +64,15 @@ def get_address_from_coordinates(latitude, longitude):
 
 
 
+print('SUCCESS')
+
 #endregion
 
 #===============================================================================================================================================================
 #Setting up our Supabase cloud database connection, logging in, AND creating some functions to use to access the data:
 #region
+
+print('CONNECTING TO OUR SUPABASE DATABASE, LOGGING IN, AND CREATING FUNCTIONS FOR PULLING/MODIFYING DATA')
 
 #=========================================================================
 #Connecting to our Supabase cloud database:
@@ -247,12 +255,15 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
 #endregion
 
 
+print('SUCCESS')
 #endregion
 
 
 #===============================================================================================================================================================
 #Generating our access token for the HCSS API:
 #region
+
+print('CONNECTING TO OUR HCSS API')
 
 import requests
 
@@ -280,12 +291,16 @@ HEADERS = {
 "Authorization": "Bearer {}".format(token)
 }
 
+print('SUCCESS')
+
 #endregion
 
 
 #===============================================================================================================================================================
 #Connecting to the Smartsheet API:
 #region
+
+print('CONNECTING TO OUR SMARTSHEET API')
 
 #Importing the Smartsheet library so that I can interact with it's API:
 #SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
@@ -298,7 +313,7 @@ smart = smartsheet.Smartsheet('gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1')
 #Make sure we don't miss any errors:
 smart.errors_as_exceptions(True)
 
-
+print('SUCCESS')
 
 #endregion
 

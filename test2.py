@@ -165,8 +165,20 @@ if response.status_code == 200:
     data = response.json()
 
 
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
 
-
+def get_address_from_coordinates(latitude, longitude):
+    """
+    Takes GPS coordinates (latitude, longitude) and returns the corresponding address.
+    """
+    geolocator = Nominatim(user_agent="geo_lookup")
+            
+    try:
+        location = geolocator.reverse((latitude, longitude), exactly_one=True)
+        return location.address if location else "Address not found"
+    except GeocoderTimedOut:
+        return "Geocoder service timed out. Try again."
 
 
 
