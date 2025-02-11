@@ -7,3 +7,4 @@ streamlit_cookies_manager
 streamlit-aggrid
 supabase
 smartsheet-python-sdk
+geopy

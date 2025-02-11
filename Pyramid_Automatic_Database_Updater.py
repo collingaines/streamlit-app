@@ -1171,7 +1171,7 @@ for j in range(len(projectData)):
     if jobStatus=='active':
         projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
-print('projectCoordinateDic is {}'.format(projectCoordinateDict))
+#print('projectCoordinateDic is {}'.format(projectCoordinateDict))
 
 
 #=========================================================================================
@@ -1293,6 +1293,46 @@ for i in range(len(equipmentInfoTodayList)):
         return counter.most_common(1)[0][0]  # Get the most common value
     
     project = most_frequent(equipmentProjectList)
+
+    #=========================================
+    #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
+
+    if project==None:
+        #Defining our function to pull an address from GPS coordinates:
+        from geopy.geocoders import Nominatim
+        from geopy.exc import GeocoderTimedOut
+
+        def get_address_from_coordinates(latitude, longitude):
+            """
+            Takes GPS coordinates (latitude, longitude) and returns the corresponding address.
+            """
+            geolocator = Nominatim(user_agent="geo_lookup")
+            
+            try:
+                location = geolocator.reverse((latitude, longitude), exactly_one=True)
+                return location.address if location else "Address not found"
+            except GeocoderTimedOut:
+                return "Geocoder service timed out. Try again."
+
+        
+        #Creating a list of all addresses
+        addressList = []
+
+        for j in range(len(locationList)):
+            if locationList[j][0]!=None and locationList[j][1]!=None:
+                entryLat = float(locationList[j][0])
+                entryLong = float(locationList[j][1])
+            else:
+                entryLat = 0
+                entryLong = 0
+
+            address = get_address_from_coordinates(entryLat, entryLong)
+
+            addressList.append(address)
+
+        #Definng our project variable as the most common address found in our address list:
+        project = most_frequent(addressList)
+
 
     
     #=========================================
