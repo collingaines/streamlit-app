@@ -58,7 +58,7 @@ query = {
         #"endDate": endDate
         # "modifiedSince": "2019-08-24T14:15:22Z",
         # "cursor": "string",
-         "limit": "1000000"
+        # "limit": "1000000"
 }
 
 #Passing our token value generated above to our "HEADERS" variable:
@@ -67,7 +67,7 @@ HEADERS = {
 }
 
 #Finally, let's generate store our response which includes all of our raw data to a variable:
-response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+response = requests.post(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
 
 #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
 if response.status_code == 200:

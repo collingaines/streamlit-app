@@ -1280,12 +1280,17 @@ for j in range(len(projectData)):
     jobNum = projectData[j][1]
     jobDesc = projectData[j][2]
     jobStatus = projectData[j][4]
-    lat = float(projectData[j][5])
-    long = float(projectData[j][6])
+    if projectData[j][5]!=None:
+        lat = float(projectData[j][5])
+    else:
+        lat = 0
+    if projectData[j][6]!=None:
+        long = float(projectData[j][6])
+    else:
+        long = 0
 
     #We only want to update our dictionary for active projects
     if jobStatus=='active':
-
         #Calculating our lat/long max/min ranges using our function defined above: 
         coordinateMaxMins = get_lat_lng_bounds(lat, long, radius_miles=1.5) #Using our "get_lat_lng_bounds" function defined at the top of this script
         min_lat = coordinateMaxMins.get('min_lat')
