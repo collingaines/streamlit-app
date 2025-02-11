@@ -36,6 +36,32 @@ import io
 
 #endregion
 
+
+#===============================================================================================================================================================
+#Defining some misc functions for use later in script:
+#region
+
+#================================================================
+#Defining our function to pull an address from GPS coordinates:
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+
+def get_address_from_coordinates(latitude, longitude):
+    """
+    Takes GPS coordinates (latitude, longitude) and returns the corresponding address.
+    """
+    geolocator = Nominatim(user_agent="geo_lookup")
+            
+    try:
+        location = geolocator.reverse((latitude, longitude), exactly_one=True)
+        return location.address if location else "Address not found"
+    except GeocoderTimedOut:
+        return "Geocoder service timed out. Try again."
+
+
+
+#endregion
+
 #===============================================================================================================================================================
 #Setting up our Supabase cloud database connection, logging in, AND creating some functions to use to access the data:
 #region
@@ -1298,23 +1324,6 @@ for i in range(len(equipmentInfoTodayList)):
     #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
 
     if project==None:
-        #Defining our function to pull an address from GPS coordinates:
-        from geopy.geocoders import Nominatim
-        from geopy.exc import GeocoderTimedOut
-
-        def get_address_from_coordinates(latitude, longitude):
-            """
-            Takes GPS coordinates (latitude, longitude) and returns the corresponding address.
-            """
-            geolocator = Nominatim(user_agent="geo_lookup")
-            
-            try:
-                location = geolocator.reverse((latitude, longitude), exactly_one=True)
-                return location.address if location else "Address not found"
-            except GeocoderTimedOut:
-                return "Geocoder service timed out. Try again."
-
-        
         #Creating a list of all addresses
         addressList = []
 
@@ -1326,7 +1335,7 @@ for i in range(len(equipmentInfoTodayList)):
                 entryLat = 0
                 entryLong = 0
 
-            address = get_address_from_coordinates(entryLat, entryLong)
+            address = get_address_from_coordinates(entryLat, entryLong) #using  our "get_address_from_coordinates" function defined at the top of this script
 
             addressList.append(address)
 

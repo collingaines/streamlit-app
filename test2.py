@@ -176,33 +176,6 @@ if response.status_code == 200:
 
 
 
-equipmentProjectList=[]
-
-from collections import Counter
-
-def most_frequent(lst):
-    """
-    Returns the most frequently occurring value in the list.
-    If there are multiple values with the same highest frequency, returns one of them.
-    """
-    if not lst:
-        return None  # Return None for empty lists
-        
-    counter = Counter(lst)
-    return counter.most_common(1)[0][0]  # Get the most common value
-    
-project = most_frequent(equipmentProjectList)
-
-
-print(project)
-
-
-
-
-
-
-
-
 
 
 
