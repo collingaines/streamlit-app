@@ -3,28 +3,19 @@
 #SECTION #0 | IMPORTING OUR PYTHON LIBRARIES: 
 #region CLICK HERE TO EXPAND SECTION
 
-print('IMPORTING PYTHON LIBRARIES')
+
 #===============================================================================================================================================================
 #Importing misc libraries
 #region
 
-import streamlit as st
+print('IMPORTING PYTHON LIBRARIES...')
+
 import pandas as pd
 import numpy as np
-from streamlit_cookies_manager import EncryptedCookieManager
 import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from st_aggrid.grid_options_builder import GridOptionsBuilder
-from datetime import datetime
 
-#endregion
-
-#===============================================================================================================================================================
-#Importing our libraries for our AgGrid table:
-#region
-
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from st_aggrid.shared import JsCode
+#The time module will alow us to pause the script for set periods of time. This can be useful when some information takes a couple of seconds to update properly on the webpage
+import time
 
 #importing the os module to allow us to work with our operating system in various ways
 import os
@@ -35,16 +26,16 @@ import sqlite3
 from openpyxl import Workbook
 import io
 
-#endregion
-
 print('SUCCESS')
 
 #endregion
+
 #===============================================================================================================================================================
 #Defining some misc functions for use later in script:
 #region
 
-print('DEFINING MISC FUNCTIONS FOR USE THROUGHOUT SCRIPT')
+print('DEFINING MISC FUNCTIONS FOR USE THROUGHOUT SCRIPT...')
+
 #================================================================
 #Defining our function to pull an address from GPS coordinates:
 from geopy.geocoders import Nominatim
@@ -62,7 +53,52 @@ def get_address_from_coordinates(latitude, longitude):
     except GeocoderTimedOut:
         return "Geocoder service timed out. Try again."
 
+#================================================================
+#Writing a function that will format our code block run time print outs in the console to be easier to read: 
+def format_time(seconds):
+    minutes = int(seconds // 60)
+    seconds = seconds % 60
+    return f"{minutes} minutes and {seconds:.2f} seconds"
 
+#Starting our time for our full script runtime console printout
+fullScritStart_Time = time.time()
+
+
+#================================================================
+#Writing our function for pulling the lat/long range for each project
+import math
+
+def get_lat_lng_bounds(lat, lng, radius_miles=3):
+    """Calculate the bounding box for a given latitude, longitude, and radius in miles."""
+    miles_per_degree_lat = 69.0  # Approximate miles per degree of latitude
+    delta_lat = radius_miles / miles_per_degree_lat
+
+    miles_per_degree_lng = 69.0 * math.cos(math.radians(lat))  # Adjust for latitude
+    delta_lng = radius_miles / miles_per_degree_lng
+
+    return {
+        "min_lat": lat - delta_lat,
+        "max_lat": lat + delta_lat,
+        "min_lng": lng - delta_lng,
+        "max_lng": lng + delta_lng,
+    }
+
+
+#================================================================
+#Writing a function that will return the most frequently occuring item an a list: 
+from collections import Counter
+
+def most_frequent(lst):
+    """
+    Returns the most frequently occurring value in the list.
+    If there are multiple values with the same highest frequency, returns one of them.
+    """
+    if not lst:
+        return None  # Return None for empty lists
+        
+    counter = Counter(lst)
+    return counter.most_common(1)[0][0]  # Get the most common value
+    
 
 print('SUCCESS')
 
@@ -72,7 +108,7 @@ print('SUCCESS')
 #Setting up our Supabase cloud database connection, logging in, AND creating some functions to use to access the data:
 #region
 
-print('CONNECTING TO OUR SUPABASE DATABASE, LOGGING IN, AND CREATING FUNCTIONS FOR PULLING/MODIFYING DATA')
+print('CONNECTING TO OUR SUPABASE DATABASE, LOGGING IN, AND CREATING FUNCTIONS FOR PULLING/MODIFYING DATA...')
 
 #=========================================================================
 #Connecting to our Supabase cloud database:
@@ -258,12 +294,11 @@ def delete_rows_by_value(supabase_url: str, supabase_key: str, table: str, colum
 print('SUCCESS')
 #endregion
 
-
 #===============================================================================================================================================================
 #Generating our access token for the HCSS API:
 #region
 
-print('CONNECTING TO OUR HCSS API')
+print('CONNECTING TO OUR HCSS API...')
 
 import requests
 
@@ -300,7 +335,7 @@ print('SUCCESS')
 #Connecting to the Smartsheet API:
 #region
 
-print('CONNECTING TO OUR SMARTSHEET API')
+print('CONNECTING TO OUR SMARTSHEET API...')
 
 #Importing the Smartsheet library so that I can interact with it's API:
 #SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
@@ -318,6 +353,9 @@ print('SUCCESS')
 #endregion
 
 
+#endregion
+
+
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
@@ -325,6 +363,8 @@ print('<Smartsheet Equipment Inspection Sheet Info>')
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Inspection" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
+
+start_time = time.time()
 
 #==========================================================================================================================================================================
 #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
@@ -462,6 +502,12 @@ for MyRow in MySheet.rows:
     insert_response = insert_data(data_to_insert)
 
     
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
 
 #endregion
 
@@ -473,6 +519,8 @@ print('<Updating "Master_Equipment_Asset_List" Database Table from our "Master E
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
+
+start_time = time.time()
 
 #==========================================================================================================================================================================
 #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
@@ -541,6 +589,11 @@ for MyRow in MySheet.rows:
     insert_response = insert_data(data_to_insert)
 
 
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 #endregion
 
@@ -552,6 +605,8 @@ print('<Updating Smartsheet Equipment Inspection & Fuel Log Dropdown Data>')
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and updating dropdown lists...')
 #region CLICK HERE TO EXPAND THIS SECTION
+
+start_time = time.time()
 
 #==========================================================================================================================================================
 #First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
@@ -638,7 +693,12 @@ updated_column.options = new_options  # Apply new dropdown values
 # Step 4: Send update request
 response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
 
-#print(f"Updated Dropdown List: {new_options}")
+
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 #endregion
 
@@ -651,6 +711,7 @@ print('<========================================================================
 print('Connecting to the HCSS API and updating our "Master_Project_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
+start_time = time.time()
 
 #==========================================================================================================================
 #Creating a list of timecard values for use later in calculating the timecard values for each foreman:
@@ -764,7 +825,11 @@ for i in range(len(projectInfoList)):
     insert_response = insert_data(data_to_insert)
 
 
-
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 
 #endregion
@@ -778,6 +843,7 @@ print('<========================================================================
 print('Connecting to the HCSS API and updating our "Master_Timecard_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
+start_time = time.time()
 
 #==========================================================================================================================
 #First, let's create a dictionary that ties the project HCSS API ID to a project name for use when updating our database
@@ -1015,16 +1081,11 @@ for i in range(len(timecardInfoList)):
 
 
 
-# def batch_update(table_name, data, batch_size=1000):
-#     for i in range(0, len(data), batch_size):
-#         batch = data[i : i + batch_size]
-#         response = supabase.table(table_name).upsert(batch).execute()
-#         print(f"Batch {i//batch_size + 1} inserted, status: {response}")
-
-# batch_update("Master_Timecard_Information", dataList)
-
-
-
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 
 
@@ -1042,6 +1103,10 @@ print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and 
 #==============================================================================================================================================================================================
 #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
 #region
+
+print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database")
+start_time = time.time()
+
 
 #=========================================================================================
 #Connecting to the telematics endpoint of the HCSS API and creating a list of values to be used in updating our "Equipment GPS All Data" database:
@@ -1156,6 +1221,11 @@ for i in range(len(equipmentInfoList)):
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
 
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 #endregion
 
@@ -1163,6 +1233,9 @@ for i in range(len(equipmentInfoList)):
 #==============================================================================================================================================================================================
 #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
 #region
+
+print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today")
+start_time = time.time()
 
 #=========================================================================================
 #Creating a variable for today's date:
@@ -1192,7 +1265,9 @@ for i in range(len(data)):
     entryEquipID = data[i][2]
     equipDescr = data[i][3]
 
-    equipmentInfoTodayList.append([entryEquipID, equipDescr])
+    #Making sure to not add duplicate equipment IDs to our list: 
+    if [entryEquipID, equipDescr] not in equipmentInfoTodayList:
+        equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
 
 #=========================================================================================
@@ -1259,27 +1334,6 @@ for i in range(len(equipmentInfoTodayList)):
     totalEquipHours = highestHourReading-lowestHourReading
 
 
-
-    #=========================================
-    #Writing our function for pulling the lat/long range for each project
-    import math
-
-    def get_lat_lng_bounds(lat, lng, radius_miles=3):
-        """Calculate the bounding box for a given latitude, longitude, and radius in miles."""
-        miles_per_degree_lat = 69.0  # Approximate miles per degree of latitude
-        delta_lat = radius_miles / miles_per_degree_lat
-
-        miles_per_degree_lng = 69.0 * math.cos(math.radians(lat))  # Adjust for latitude
-        delta_lng = radius_miles / miles_per_degree_lng
-
-        return {
-            "min_lat": lat - delta_lat,
-            "max_lat": lat + delta_lat,
-            "min_lng": lng - delta_lng,
-            "max_lng": lng + delta_lng,
-        }
-
-
     #=========================================
     #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
     equipmentProjectList = []
@@ -1306,7 +1360,7 @@ for i in range(len(equipmentInfoTodayList)):
                 projectLong = 0
 
             #Calculating our lat/long max/min ranges using our function defined above: 
-            coordinateMaxMins = get_lat_lng_bounds(projectLat, projectLong, radius_miles=1.5)
+            coordinateMaxMins = get_lat_lng_bounds(projectLat, projectLong, radius_miles=1.5) #Using our "get_lat_lng_bounds" function defined at the top of this script
             min_lat = coordinateMaxMins.get('min_lat')
             max_lat = coordinateMaxMins.get('max_lat')
             min_lng = coordinateMaxMins.get('min_lng')
@@ -1317,27 +1371,14 @@ for i in range(len(equipmentInfoTodayList)):
                     equipmentProjectList.append(thisJobValue)
 
     
-        
-    #=========================================
-    #Lastly, identifying the most frequently occuring project location in our list to determine the location of this equipment for this date: 
-    from collections import Counter
-
-    def most_frequent(lst):
-        """
-        Returns the most frequently occurring value in the list.
-        If there are multiple values with the same highest frequency, returns one of them.
-        """
-        if not lst:
-            return None  # Return None for empty lists
-        
-        counter = Counter(lst)
-        return counter.most_common(1)[0][0]  # Get the most common value
     
+    #=========================================
+    #Using our "most_frequent" function defined at the top of this script to pull the most frequently occuring project from our "equipmentProjectList":
     project = most_frequent(equipmentProjectList)
+
 
     #=========================================
     #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
-
     if project==None:
         #Creating a list of all addresses
         addressList = []
@@ -1365,13 +1406,20 @@ for i in range(len(equipmentInfoTodayList)):
     equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
 
 
-
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #endregion
 
 
 #==============================================================================================================================================================================================
 #Next, let's enter the values above into our "Master Equipment GPS Data" database
 #region
+
+print("Next, let's enter the values above into our Master Equipment GPS Data database")
+start_time = time.time()
 
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
@@ -1422,6 +1470,11 @@ for key,values in equipmentInfoDictionary.items():
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
 
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #endregion
 
 
