@@ -1332,6 +1332,7 @@ for i in range(len(equipmentInfoTodayList)):
 
         #Definng our project variable as the most common address found in our address list:
         project = most_frequent(addressList)
+        project = 'OUTSIDE OF GEOFENCES! GPS Coordinate Address: '+str(project)
 
 
     
