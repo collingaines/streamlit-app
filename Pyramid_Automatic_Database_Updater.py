@@ -1104,7 +1104,7 @@ print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and 
 #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
 #region
 
-print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database")
+print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database...")
 start_time = time.time()
 
 
@@ -1234,7 +1234,7 @@ print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
 #region
 
-print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today")
+print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today...")
 start_time = time.time()
 
 #=========================================================================================
@@ -1253,7 +1253,7 @@ today = str(get_current_datetime())[0:10]
 equipmentInfoTodayList = []
 
 #=========================================================================================
-#Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+#Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this date:
 # filters = {"column1": "value1", "column2": "value2"}
 # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
 filters = {'date': todayCentral}
@@ -1285,9 +1285,19 @@ for j in range(len(projectData)):
 
     #We only want to update our dictionary for active projects
     if jobStatus=='active':
-        projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
-#print('projectCoordinateDic is {}'.format(projectCoordinateDict))
+        #Calculating our lat/long max/min ranges using our function defined above: 
+        coordinateMaxMins = get_lat_lng_bounds(lat, long, radius_miles=1.5) #Using our "get_lat_lng_bounds" function defined at the top of this script
+        min_lat = coordinateMaxMins.get('min_lat')
+        max_lat = coordinateMaxMins.get('max_lat')
+        min_lng = coordinateMaxMins.get('min_lng')
+        max_lng = coordinateMaxMins.get('max_lng')
+
+        projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
+
+        # projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
+
+
 
 
 #=========================================================================================
@@ -1299,7 +1309,7 @@ for i in range(len(equipmentInfoTodayList)):
     equipDescript = equipmentInfoTodayList[i][1]
 
     #=========================================
-    #Using our "etch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+    #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
     # filters = {"column1": "value1", "column2": "value2"}
     # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
     filters = {"equipID": entryEquipID, 'date': todayCentral}
@@ -1346,26 +1356,18 @@ for i in range(len(equipmentInfoTodayList)):
             entryLat = 0
             entryLong = 0
 
-        #projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
+        #projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
         for key,values in projectCoordinateDict.items():
             thisJobNum = key[0]
             thisJobDesc = key[1]
             thisJobValue = thisJobNum+'-'+thisJobDesc
 
-            if values[0]!=None and values[1]!=None:
-                projectLat = float(values[0])
-                projectLong = float(values[1])
-            else:
-                projectLat = 0
-                projectLong = 0
+            min_lat = values[0]
+            max_lat = values[1]
+            min_lng = values[2]
+            max_lng = values[3]
 
-            #Calculating our lat/long max/min ranges using our function defined above: 
-            coordinateMaxMins = get_lat_lng_bounds(projectLat, projectLong, radius_miles=1.5) #Using our "get_lat_lng_bounds" function defined at the top of this script
-            min_lat = coordinateMaxMins.get('min_lat')
-            max_lat = coordinateMaxMins.get('max_lat')
-            min_lng = coordinateMaxMins.get('min_lng')
-            max_lng = coordinateMaxMins.get('max_lng')
-
+            #If the longitude/latitude are within the ranges of this project, then we will add to our list:
             if entryLat>=min_lat and entryLat<=max_lat:
                 if entryLong>=min_lng and entryLong<=max_lng:
                     equipmentProjectList.append(thisJobValue)
@@ -1400,7 +1402,6 @@ for i in range(len(equipmentInfoTodayList)):
         project = 'OUTSIDE OF GEOFENCES! GPS Coordinate Address: '+str(project)
 
 
-    
     #=========================================
     #Updating our dictionary of values to be entered into our database:
     equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
@@ -1418,7 +1419,7 @@ print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #Next, let's enter the values above into our "Master Equipment GPS Data" database
 #region
 
-print("Next, let's enter the values above into our Master Equipment GPS Data database")
+print("Next, let's enter the values above into our Master Equipment GPS Data database...")
 start_time = time.time()
 
 #============================================================================
@@ -1469,6 +1470,7 @@ for key,values in equipmentInfoDictionary.items():
     #============================================================================
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
+
 
 #Printing out the code block runtime to the console: 
 print('<SUCCESS>')
