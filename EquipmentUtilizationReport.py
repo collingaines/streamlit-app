@@ -104,7 +104,36 @@ def most_frequent(lst):
         
     counter = Counter(lst)
     return counter.most_common(1)[0][0]  # Get the most common value
+
+
+#================================================================
+#Writing a function that will pull the city out of our string that gets returned in our master gps data database table:
+import re
+
+def extract_city(address_string: str) -> str:
+    """
+    Extracts the city name from the given address string.
+    The city is always the fourth element in the comma-separated address after 'GPS Coordinate Address:'.
     
+    :param address_string: str, formatted address string
+    :return: str, extracted city name
+    """
+    # Extract the part after 'GPS Coordinate Address:'
+    match = re.search(r'GPS Coordinate Address: (.+)', address_string)
+    
+    if match:
+        address_parts = [part.strip() for part in match.group(1).split(',')]
+        
+        # The city is the fourth element in the address structure
+        if len(address_parts) >= 4:
+            return address_parts[2]  # City name is at index 2 (zero-based index)
+    
+    return "City not found"  # Return a fallback message if extraction fails
+
+# Example usage
+#address_string = "OUTSIDE OF GEOFENCES! GPS Coordinate Address: 308, Plantation Drive, Coppell, Dallas County, Texas, 75019, United States"
+#city = extract_city(address_string)
+
 
 print('SUCCESS')
 
@@ -420,8 +449,38 @@ print('SUCCESS')
 #Next, let's iterate through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list:
 #region
 
-print('')
 
+#==================================================================================
+#First, let's build a project/project manager dictionary using our Project Info smartsheet!
+#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+MySheet = smart.Sheets.get_sheet('3259554229866372')
+
+projectManagerDictionary = {}
+projectManagerCityDictionary = {} #Let's also create a dictionary that stores the city/project manager if there isn't a project identified by our GPS data
+
+for MyRow in MySheet.rows:
+    #========================================
+    #Defining some initial values that will be pulled straight from the smartsheet: 
+    jobNum = MyRow.cells[2].value
+    projectManager = MyRow.cells[13].value
+    city = MyRow.cells[10].value
+    
+
+    #========================================
+    #Updating our dictionary tieing project numbers to project managers:
+    projectManagerDictionary[jobNum]=projectManager
+
+    #========================================
+    #Updating our dictionary tieing cities to project managers:
+    if city in projectManagerCityDictionary:
+        projectManagerCityDictionary[city]=projectManagerCityDictionary[city]+' OR '+projectManagerCityDictionary[city]
+    else:
+        projectManagerCityDictionary[city]=projectManager
+
+
+
+#==================================================================================
+#Next, let's iterate through our list of values from our GPS, perform our calcs, and update our list:
 equipmentUtilizationList = []
 
 for i in range(len(gpsDataList)):
@@ -432,13 +491,30 @@ for i in range(len(gpsDataList)):
     entryEquipDescription = gpsDataList[i][2]
     entryGPShours = gpsDataList[i][3]
     primaryLocation = gpsDataList[i][4]
-
+    if primaryLocation!=None:
+        jobNum = primaryLocation[0:5]
+    else:
+        jobNum = ''
+    
+    #========================================
     #Converting our gps hour variable to a floating point number: 
     if entryGPShours==None:
             entryGPShours=0
     else:
         entryGPShours=float(entryGPShours)
 
+    #========================================
+    #Using our dictionaries created above to define a variable for our project manager:
+    if jobNum in projectManagerDictionary:
+        projectManager=projectManagerDictionary[jobNum]
+    elif jobNum=='OUTSI':
+        city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
+        if city in projectManagerCityDictionary:
+            projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
+        else:
+            projectManager='No PMs currently assigned to projects in this city'
+    else:
+        projectManager='No PM Found'
 
     #==================================================================================
     #Pulling our Heavy Job equipment info for this date/equipment:
@@ -460,7 +536,7 @@ for i in range(len(gpsDataList)):
         foreman = 'No Timecard Entry for This Equipment/Date'
 
         #Updating our list:
-        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
+        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
     #=======================================
     #If a blank list is not returned, let's pull the actual hours and perform our calcs
@@ -477,7 +553,7 @@ for i in range(len(gpsDataList)):
         hourDelta = round(entryGPShours-heavyJobHours,2)
         
         #Updating our list:
-        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
+        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
 
 print(equipmentUtilizationList)
@@ -490,8 +566,8 @@ print(equipmentUtilizationList)
 #region
 
 #ITEMS TO ADD FOR UPDATE!
-#> ONLY SHOW ENTRIES FOR EQUIPMENT WITH NON-ZERO GPS & HEAVY JOB HOURS!
-#> ADD A PM NAME COLUMN FOR EACH ENTRY FOR EASIER FILTERING OF REPORT!
+#> ONLY SHOW ENTRIES FOR EQUIPMENT WITH MORE THAN 0.5 GPS HOURS!
+
 #> IF NO PROJECT IS RETURNED AND IT'S AN ADDRESSS, HAVE THIS PM NAME COLUMN POPULATE WITH A PM BASED ON CITY AND ADD A "?" TO IT
 #> ADD CONDITIONAL FORMATTING FOR CLORING CELLS, NOT THAT NASTY RED
 #> ONLY HIGHLIGHT RED HOUR DIFFERENCES GREATER THAN 0.25? MAYBE SEE HOW ACCURATE YOUR SYSTEM GPS DATA IS FIRST
@@ -510,7 +586,7 @@ sheet = wb['Sheet']
 #==================================================================================
 #Clearing any previous values just in case our current report is shorter than a previous one:
 row=1
-for i in range(0,2500):
+for i in range(0,3000):
     sheet['A'+str(row)].value = ''
     sheet['B'+str(row)].value = ''
     sheet['C'+str(row)].value = ''
@@ -552,28 +628,28 @@ sheet['I1'].font = Font(bold=True)
 
 #==================================================================================
 #Populating the cells in our excel spreadsheet: 
-
-checkerList = []
+row=2
 
 #equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
 for i in range(len(equipmentUtilizationList)):
-    checker = equipmentUtilizationList[i][0]+equipmentUtilizationList[i][1]
+    sheet['A'+str(row)].value = equipmentUtilizationList[i][0]
+    sheet['B'+str(row)].value = equipmentUtilizationList[i][1]
+    sheet['C'+str(row)].value = equipmentUtilizationList[i][2]
+    sheet['D'+str(row)].value = equipmentUtilizationList[i][3]
+    sheet['E'+str(row)].value = equipmentUtilizationList[i][4]
+    sheet['F'+str(row)].value = equipmentUtilizationList[i][5]
+    sheet['G'+str(row)].value = equipmentUtilizationList[i][6]
+    sheet['H'+str(row)].value = equipmentUtilizationList[i][7]
+    sheet['I'+str(row)].value = equipmentUtilizationList[i][8]
 
-    if checker not in checkerList: 
-        sheet['A'+str(row)].value = equipmentUtilizationList[i][0]
-        sheet['B'+str(row)].value = equipmentUtilizationList[i][1]
-        sheet['C'+str(row)].value = equipmentUtilizationList[i][2]
-        sheet['D'+str(row)].value = equipmentUtilizationList[i][3]
-        sheet['E'+str(row)].value = equipmentUtilizationList[i][4]
-        sheet['F'+str(row)].value = equipmentUtilizationList[i][5]
-        sheet['G'+str(row)].value = equipmentUtilizationList[i][6]
-        sheet['H'+str(row)].value = equipmentUtilizationList[i][7]
-        sheet['I'+str(row)].value = equipmentUtilizationList[i][8]
+    row=row+1
 
-        checkerList.append(checker)
+
 
 #==================================================================================
 #Finally, let's save the workbook:
+
+print(equipmentUtilizationList)
 
 wb.save('EquipmentUtilizationReport.xlsx')
 
