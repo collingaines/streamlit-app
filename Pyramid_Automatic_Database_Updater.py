@@ -1528,11 +1528,11 @@ for j in range(len(projectData)):
     jobNum = projectData[j][1]
     jobDesc = projectData[j][2]
     jobStatus = projectData[j][4]
-    if projectData[j][5]!=None:
+    if projectData[j][5]!='None':
         lat = float(projectData[j][5])
     else:
         lat = 0
-    if projectData[j][6]!=None:
+    if projectData[j][6]!='None':
         long = float(projectData[j][6])
     else:
         long = 0
