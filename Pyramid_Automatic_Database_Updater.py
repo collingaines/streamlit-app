@@ -10,8 +10,11 @@
 
 print('IMPORTING PYTHON LIBRARIES...')
 
+#Pandas and numpy will allow us to work with dataframes:
 import pandas as pd
 import numpy as np
+
+#Datetime will allow us to pull current dates and work with dates/times
 import datetime
 
 #The time module will alow us to pause the script for set periods of time. This can be useful when some information takes a couple of seconds to update properly on the webpage
@@ -23,7 +26,14 @@ import os
 #Import sqlite3 for all database functionality
 import sqlite3
 
+#importing openpyxl for excel interaction, including modules that allow us to incorporate conditional formatting:
+import openpyxl
 from openpyxl import Workbook
+from openpyxl.styles import Color, PatternFill, Font, Border
+from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.formatting.rule import ColorScaleRule, CellIsRule, FormulaRule
+
+
 import io
 
 print('SUCCESS')
@@ -330,13 +340,13 @@ print('SUCCESS')
 
 #endregion
 
-
 #===============================================================================================================================================================
-#Connecting to the Smartsheet API:
+#Connecting to the Smartsheet API and writing some functions for interacting with it:
 #region
 
 print('CONNECTING TO OUR SMARTSHEET API...')
 
+#=======================================================================
 #Importing the Smartsheet library so that I can interact with it's API:
 #SMARTSHEET API TOKEN (Collin's Application) ==> gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1
 import smartsheet
@@ -347,6 +357,34 @@ smart = smartsheet.Smartsheet('gFRPGyUEO4ykQlJQlmbrBqZiTmhbVCEuw8ol1')
 
 #Make sure we don't miss any errors:
 smart.errors_as_exceptions(True)
+
+
+#=======================================================================
+#Writing a function that will allow us to delete all entries in a smartsheet
+def delete_all_rows(sheet_id):
+    """Deletes all rows from the given Smartsheet."""
+    
+    # Get the current rows in the sheet
+    sheet = smart.Sheets.get_sheet(sheet_id)
+    
+    # Extract row IDs
+    row_ids = [row.id for row in sheet.rows]
+
+    if not row_ids:
+        print("No rows to delete.")
+        return
+
+    # print(f"Deleting {len(row_ids)} rows...")
+
+    # Delete rows in batches (Smartsheet API allows up to 500 rows per request)
+    batch_size = 500
+    for i in range(0, len(row_ids), batch_size):
+        batch = row_ids[i:i+batch_size]
+        response = smart.Sheets.delete_rows(sheet_id, batch)
+        # print(f"Deleted {len(batch)} rows. Response: {response.message}")
+
+
+
 
 print('SUCCESS')
 
@@ -713,12 +751,107 @@ print('Connecting to the HCSS API and updating our "Master_Project_Information" 
 
 start_time = time.time()
 
-#==========================================================================================================================
-#Creating a list of timecard values for use later in calculating the timecard values for each foreman:
+#==============================================================================================================================================================================================
+#First, let's pull our project data from our smartsheet and update our database:
+#region 
+
+
+#============================================================================
+#Pulling data from our smartsheet and saving it to a list
+
+#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+MySheet = smart.Sheets.get_sheet('3259554229866372')
+
+smartSheetProjectInfoList = []
+
+for MyRow in MySheet.rows:
+    #========================================
+    #Defining some initial values that will be pulled straight from the smartsheet: 
+    hcssAPIid = MyRow.cells[0].value
+    hcssLegacyID = MyRow.cells[1].value
+    jobNum = MyRow.cells[2].value
+    jobName = MyRow.cells[3].value
+    jobCreationDate = MyRow.cells[4].value
+    jobStatus = MyRow.cells[5].value
+    lattitude = MyRow.cells[6].value
+    longitude = MyRow.cells[7].value
+    address1 = MyRow.cells[8].value
+    address2 = MyRow.cells[9].value
+    jobCity = MyRow.cells[10].value
+    jobState = MyRow.cells[11].value
+    jobZip = MyRow.cells[12].value
+    projectManager = MyRow.cells[13].value
+    projectSuper = MyRow.cells[14].value
+    startDate = MyRow.cells[15].value
+    endDate = MyRow.cells[16].value
+
+    #========================================
+    #Updating our list:
+    smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate])
+
+
+#============================================================================
+#Deleting all existing entries in our Supabase "Master_Project_Information" database table:
+def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+    # Create a Supabase client
+    supabase: Client = create_client(supabase_url, supabase_key)
+                            
+    # Truncate the specified table
+    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                            
+truncate_table(supabase_url, supabase_key, 'Master_Project_Information')
+
+#============================================================================
+#Function to insert data into the "Master_Project_Information" table
+def insert_data(data: dict):
+    response = supabase_client.table('Master_Project_Information').insert(data).execute()
+    return response
+
+#============================================================================
+#Inserting the data into our Supabase database table:
+rowcount = 1
+
+for i in range(len(smartSheetProjectInfoList)):
+    data_to_insert = {
+        'id':rowcount,
+        'jobNum':smartSheetProjectInfoList[i][2],
+        'jobDescription':smartSheetProjectInfoList[i][3],
+        'creationDate':smartSheetProjectInfoList[i][4],
+        'jobStatus':smartSheetProjectInfoList[i][5],
+        'lattitude':smartSheetProjectInfoList[i][6],
+        'longitude':smartSheetProjectInfoList[i][7],
+        'address1':smartSheetProjectInfoList[i][8],
+        'address2':smartSheetProjectInfoList[i][9],
+        'city':smartSheetProjectInfoList[i][10],
+        'state':smartSheetProjectInfoList[i][11],
+        'zip':smartSheetProjectInfoList[i][12],
+        'projectManager':smartSheetProjectInfoList[i][13],
+        'projectSuperintendent':smartSheetProjectInfoList[i][14],
+        'startDate':smartSheetProjectInfoList[i][15],
+        'endDate':smartSheetProjectInfoList[i][16],
+        'hcssAPIid':smartSheetProjectInfoList[i][0],
+        'legacyID':smartSheetProjectInfoList[i][1]
+
+    }
+
+    rowcount=rowcount+1
+
+    #============================================================================
+    #Using the "insert_data" function defined at the top of this script
+    insert_response = insert_data(data_to_insert)
+
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Next, pulling the most recent project data from our HCSS API:
+#region
+
 #============================================
 #Connecting to the timecard endpoint of the HCSS API:
 HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/jobs"
 
+#============================================
 #Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
 from datetime import datetime
 
@@ -729,6 +862,7 @@ def get_current_datetime():
 
 endDate = str(get_current_datetime())
 
+#============================================
 #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
 query = {
         # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
@@ -741,11 +875,13 @@ query = {
          "limit": "1000000"
 }
 
+#============================================
 #Passing our token value generated above to our "HEADERS" variable:
 HEADERS = {
 "Authorization": "Bearer {}".format(token)
 }
 
+#============================================
 #Finally, let's generate store our response which includes all of our raw data to a variable:
 response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
 
@@ -773,48 +909,97 @@ if response.status_code == 200:
 
         projectInfoList.append([hcssID, legacyID, jobNum, jobDescription, createdDate, status, lattitude, longitude, address1, address2, city, state, zip])
 
+
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Creating a list of projects from our HCSS API data that ARE NOT currently in our smartsheet:
+#region
+
 #============================================================================
-#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                            
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                            
-truncate_table(supabase_url, supabase_key, 'Master_Project_Information')
-        
+#First, let's create a list of all projects currently in our smartsheet using our "smartSheetProjectInfoList" created above, and while we're at it store each project's status in a dictionary:
+
+#smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate])
+
+currentSmartsheetProjectNumList = []
+smartsheetProjectStatusDict = {}
+
+for i in range(len(smartSheetProjectInfoList)):
+    currentSmartsheetProjectNumList.append(smartSheetProjectInfoList[i][2])
+
+    #Storing our project status in a dictionary:
+    smartsheetProjectStatusDict[smartSheetProjectInfoList[i][2]]=smartSheetProjectInfoList[i][5]
+
+
 #============================================================================
-#Function to insert data into the "Cost_Code_Classifiers" table
+#Next, let's iterate through our list of HCSS API project data and create a list of any projects not currently in our smartsheet data list created in the first step of this section. While we're at it, let's also check to update our status if need be:
+newProjectInfoList = []
+
+for i in range(len(projectInfoList)):
+    apiJobNum = projectInfoList[i][2]
+
+    #=======================================
+    #Updating the project status in our smartsheet if it has changed
+    entryStatus = projectInfoList[i][5]
+    originalStatus = smartsheetProjectStatusDict[apiJobNum]
+
+    #If the status in the smartsheet does not match the status in the API, then we will want to delete the existing entry 
+    if entryStatus!=originalStatus:
+        pass
+
+    #=======================================
+    #If this project isn't currently in our smartsheet, let's add it to our list of values to add to our smartsheet!
+    if apiJobNum not in currentSmartsheetProjectNumList:
+        newProjectInfoList.append([projectInfoList[i][0], projectInfoList[i][1], projectInfoList[i][2], projectInfoList[i][3], projectInfoList[i][4], projectInfoList[i][5], projectInfoList[i][6], projectInfoList[i][7], projectInfoList[i][8], projectInfoList[i][9], projectInfoList[i][10], projectInfoList[i][11], projectInfoList[i][12]])
+
+
+
+
+
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Updating our "Master Project Information List" database table with any new entries identified in the previous step:
+#region
+
+#=================================================================================================
+#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+data = fetch_data_from_table("Master_Project_Information")
+
+rowcount = len(data)+1
+
+#============================================================================
+#Function to insert data into the "Master_Project_Information" table
 def insert_data(data: dict):
     response = supabase_client.table('Master_Project_Information').insert(data).execute()
     return response
 
 #============================================================================
 #Inserting the data into our Supabase database table:
-rowcount = 1
 
-for i in range(len(projectInfoList)):
-
+for i in range(len(newProjectInfoList)):
     data_to_insert = {
         'id':rowcount,
-        'jobNum':projectInfoList[i][2],
-        'jobDescription':projectInfoList[i][3],
-        'creationDate':projectInfoList[i][4],
-        'jobStatus':projectInfoList[i][5],
-        'lattitude':projectInfoList[i][6],
-        'longitude':projectInfoList[i][7],
-        'address1':projectInfoList[i][8],
-        'address2':projectInfoList[i][9],
-        'city':projectInfoList[i][10],
-        'state':projectInfoList[i][11],
-        'zip':projectInfoList[i][12],
-        'projectManager':'',
-        'projectSuperintendent':'',
-        'startDate':'',
-        'endDate':'',
-        'hcssAPIid':projectInfoList[i][0],
-        'legacyID':projectInfoList[i][1]
+        'jobNum':newProjectInfoList[i][2],
+        'jobDescription':newProjectInfoList[i][3],
+        'creationDate':newProjectInfoList[i][4],
+        'jobStatus':newProjectInfoList[i][5],
+        'lattitude':newProjectInfoList[i][6],
+        'longitude':newProjectInfoList[i][7],
+        'address1':newProjectInfoList[i][8],
+        'address2':newProjectInfoList[i][9],
+        'city':newProjectInfoList[i][10],
+        'state':newProjectInfoList[i][11],
+        'zip':newProjectInfoList[i][12],
+        'projectManager':'NEED TO ADD',
+        'projectSuperintendent':'NEED TO ADD',
+        'startDate':'NEED TO ADD',
+        'endDate':'NEED TO ADD',
+        'hcssAPIid':newProjectInfoList[i][0],
+        'legacyID':newProjectInfoList[i][1]
 
     }
 
@@ -823,6 +1008,69 @@ for i in range(len(projectInfoList)):
     #============================================================================
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
+
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Updating our "Master Project Information List" Smartsheet with our newly updated database values:
+#region
+
+#=================================================================================================
+#First, let's clear all of the existing values from our smartsheet using the 'delete all rows' function defined at the top of this script:
+delete_all_rows(3259554229866372)
+
+
+#=================================================================================================
+#Next, let's update the smartsheet with the values from our database:
+
+#===============================================
+#Fetching our database data:
+data = fetch_data_from_table("Master_Project_Information")
+
+#===============================================
+# Specify your sheet ID
+SHEET_ID = 3259554229866372 
+
+#===============================================
+#Iterating through our list of values from our databse and updating the smartsheet:
+newRowList = []
+
+for i in range(len(data)):
+
+    newRowList.append(smartsheet.models.Row({
+        'to_top': True,  # Add row to the top of the sheet
+        'cells': [
+            {'column_id': 845215518904196, 'value': str(data[i][16])},  
+            {'column_id': 4676342050410372, 'value': str(data[i][17])},
+            {'column_id': 520962265272196, 'value': str(data[i][1])},
+            {'column_id': 5024561892642692, 'value': str(data[i][2])},
+            {'column_id': 2424542236725124, 'value': str(data[i][3])},
+            {'column_id': 6928141864095620, 'value': str(data[i][4])},
+            {'column_id': 1298642329882500, 'value': str(data[i][5])},
+            {'column_id': 5802241957252996, 'value': str(data[i][6])},
+            {'column_id': 3550442143567748, 'value': str(data[i][7])},
+            {'column_id': 8054041770938244, 'value': str(data[i][8])},
+            {'column_id': 2772762078957444, 'value': str(data[i][9])},
+            {'column_id': 7276361706327940, 'value': str(data[i][10])},
+            {'column_id': 735692376461188, 'value': str(data[i][11])},
+            {'column_id': 6150461799485316, 'value': str(data[i][12])},
+            {'column_id': 8163564913381252, 'value': str(data[i][13])},
+            {'column_id': 5315550624567172, 'value': str(data[i][14])},
+            {'column_id': 3063750810881924, 'value': str(data[i][15])}
+        ]
+    }))
+
+
+#===============================================
+#Add rows to the sheet
+response = smart.Sheets.add_rows(SHEET_ID, newRowList)
+
+
+
+#endregion
+
+
 
 
 #Printing out the code block runtime to the console: 
@@ -1488,7 +1736,6 @@ print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #endregion
 
 
-
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
@@ -1821,6 +2068,8 @@ for key,values in equipmentHourDictionary.items():
     #============================================================================
     #Using the "insert_data" function defined at the top of this script
     insert_response = insert_data(data_to_insert)
+
+#endregion
 
 
 
