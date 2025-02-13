@@ -784,10 +784,11 @@ for MyRow in MySheet.rows:
     projectSuper = MyRow.cells[14].value
     startDate = MyRow.cells[15].value
     endDate = MyRow.cells[16].value
+    projectRadius = MyRow.cells[17].value
 
     #========================================
     #Updating our list:
-    smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate])
+    smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate, projectRadius])
 
 
 #============================================================================
@@ -830,7 +831,8 @@ for i in range(len(smartSheetProjectInfoList)):
         'startDate':smartSheetProjectInfoList[i][15],
         'endDate':smartSheetProjectInfoList[i][16],
         'hcssAPIid':smartSheetProjectInfoList[i][0],
-        'legacyID':smartSheetProjectInfoList[i][1]
+        'legacyID':smartSheetProjectInfoList[i][1],
+        'projectRadius':smartSheetProjectInfoList[i][17]
 
     }
 
@@ -999,7 +1001,8 @@ for i in range(len(newProjectInfoList)):
         'startDate':'NEED TO ADD',
         'endDate':'NEED TO ADD',
         'hcssAPIid':newProjectInfoList[i][0],
-        'legacyID':newProjectInfoList[i][1]
+        'legacyID':newProjectInfoList[i][1],
+        'projectRadius':'NEED TO ADD'
 
     }
 
