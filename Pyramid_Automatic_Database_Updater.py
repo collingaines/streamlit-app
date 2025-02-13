@@ -1411,7 +1411,23 @@ if response.status_code == 200:
         lastEngineStatus = results[i].get('lastEngineStatus')
         lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
 
+        if equipID=='SS-08 ':
+            equipID='SS-08'
 
+        #=========================================
+        #Converting equipment IDs to our standard formatting as is listed in the "Equipment Master List" smartsheet:
+        
+
+
+
+
+
+
+
+
+
+
+        #=========================================
         equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
 
 
