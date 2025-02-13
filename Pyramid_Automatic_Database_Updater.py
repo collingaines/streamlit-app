@@ -594,6 +594,9 @@ for MyRow in MySheet.rows:
     sellDate = MyRow.cells[9].value
     inspectionStatus = MyRow.cells[10].value
     chargeType = MyRow.cells[11].value
+    telematicEquipID = MyRow.cells[13].value
+    heavyJobEquipID = MyRow.cells[14].value
+    ceEquipID = MyRow.cells[15].value
 
     #============================================================================
     #Function to insert data into the "Cost_Code_Classifiers" table
@@ -616,8 +619,10 @@ for MyRow in MySheet.rows:
             'purchaseDate':purchaseDate,
             'sellDate':sellDate,
             'inspectionsReqd':inspectionStatus,
-            'chargeType':chargeType
-
+            'chargeType':chargeType,
+            'telematicEquipID':telematicEquipID,
+            'heavyJobEquipID':heavyJobEquipID,
+            'ceEquipID':ceEquipID
         }
 
     rowcount=rowcount+1
