@@ -78,7 +78,7 @@ fullScritStart_Time = time.time()
 #Writing our function for pulling the lat/long range for each project
 import math
 
-def get_lat_lng_bounds(lat, lng, radius_miles=3):
+def get_lat_lng_bounds(lat, lng, radius_miles):
     """Calculate the bounding box for a given latitude, longitude, and radius in miles."""
     miles_per_degree_lat = 69.0  # Approximate miles per degree of latitude
     delta_lat = radius_miles / miles_per_degree_lat
@@ -1060,7 +1060,8 @@ for i in range(len(data)):
             {'column_id': 6150461799485316, 'value': str(data[i][12])},
             {'column_id': 8163564913381252, 'value': str(data[i][13])},
             {'column_id': 5315550624567172, 'value': str(data[i][14])},
-            {'column_id': 3063750810881924, 'value': str(data[i][15])}
+            {'column_id': 3063750810881924, 'value': str(data[i][15])},
+            {'column_id': 205938309156740, 'value': str(data[i][18])}
         ]
     }))
 
@@ -1528,30 +1529,35 @@ projectData = fetch_data_from_table("Master_Project_Information")
 projectCoordinateDict = {}
 
 for j in range(len(projectData)):
-    jobNum = projectData[j][1]
-    jobDesc = projectData[j][2]
     jobStatus = projectData[j][4]
-    if projectData[j][5]!='None':
-        lat = float(projectData[j][5])
-    else:
-        lat = 0
-    if projectData[j][6]!='None':
-        long = float(projectData[j][6])
-    else:
-        long = 0
 
     #We only want to update our dictionary for active projects
     if jobStatus=='active':
+        jobNum = projectData[j][1]
+        jobDesc = projectData[j][2]
+    
+        if projectData[j][5]!='None':
+            lat = float(projectData[j][5])
+        else:
+            lat = 0
+        if projectData[j][6]!='None':
+            long = float(projectData[j][6])
+        else:
+            long = 0
+
+        if projectData[j][18]!=None:
+            jobRadius = float(projectData[j][18])
+        else:
+            jobRadius = 0
+
         #Calculating our lat/long max/min ranges using our function defined above: 
-        coordinateMaxMins = get_lat_lng_bounds(lat, long, radius_miles=1.5) #Using our "get_lat_lng_bounds" function defined at the top of this script
+        coordinateMaxMins = get_lat_lng_bounds(lat, long, jobRadius) #Using our "get_lat_lng_bounds" function defined at the top of this script
         min_lat = coordinateMaxMins.get('min_lat')
         max_lat = coordinateMaxMins.get('max_lat')
         min_lng = coordinateMaxMins.get('min_lng')
         max_lng = coordinateMaxMins.get('max_lng')
 
         projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
-
-        # projectCoordinateDict[(jobNum, jobDesc)]=[lat, long]
 
 
 
