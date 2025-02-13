@@ -478,6 +478,18 @@ for MyRow in MySheet.rows:
         projectManagerCityDictionary[city]=projectManager
 
 
+#==================================================================================
+#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+chargeTypeDictionary = {}
+
+for MyRow in MySheet.rows: 
+    entryEquipID = MyRow.cells[0].value
+    chargeType = MyRow.cells[11].value
+
+    chargeTypeDictionary[entryEquipID]=chargeType
+
 
 #==================================================================================
 #Next, let's iterate through our list of values from our GPS, perform our calcs, and update our list:
@@ -503,57 +515,80 @@ for i in range(len(gpsDataList)):
     else:
         entryGPShours=float(entryGPShours)
 
+
     #========================================
-    #Using our dictionaries created above to define a variable for our project manager:
-    if jobNum in projectManagerDictionary:
-        projectManager=projectManagerDictionary[jobNum]
-    elif jobNum=='OUTSI':
-        city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
-        if city in projectManagerCityDictionary:
-            projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
-        else:
-            projectManager='No PMs currently assigned to projects in this city'
+    #Using our "chargeTypeDictionary" created above to assign a charge type:
+    #chargeTypeDictionary[entryEquipID]=chargeType
+    if entryEquipID in chargeTypeDictionary:
+        entryChargeType = chargeTypeDictionary[entryEquipID]
     else:
-        projectManager='No PM Found'
+        entryChargeType = ''
 
-    #==================================================================================
-    #Pulling our Heavy Job equipment info for this date/equipment:
-    filters = {'date': entryDate, 'equipmentCode': entryEquipID}
-    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", filters)
+    #========================================
+    #If our charge type is "8HR/DAY", then we will want to change the equipment GPS hours to be 8:
+    if entryChargeType=="8HR/DAY":
+        entryGPShours=8
 
-    #==================================================================================
-    #Iterating through our heavy job data, calculating the difference from the GPS data, and updating our list:
+    #========================================
+    #IMPORTANT! WE ONLY WANT TO INCLUDE ENTRIES IN OUR REPORT IF THEY HAVE GREATER THAN 0.5 HOURS OF GPS TIME && THEY DON'T HAVE A "None" CHARGE TYPE!
+    if entryChargeType!='None':
+        if entryGPShours>=0.5:
 
-    #=======================================
-    #If our database query returns a blank list, that means that there is no entry for this equipment in heavy job and we will want to set the hours equal to zero:
-    if data==[]:
-        heavyJobHours = 0
+            #========================================
+            #Using our dictionaries created above to define a variable for our project manager:
+            if jobNum in projectManagerDictionary:
+                projectManager=projectManagerDictionary[jobNum]
+            elif jobNum=='OUTSI':
+                city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
+                if city in projectManagerCityDictionary:
+                    projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
+                else:
+                    projectManager='No PMs currently assigned to projects in this city'
+            else:
+                projectManager='No PM Found'
 
-        #Calculating our hour delta:
-        hourDelta = round(entryGPShours-heavyJobHours,2)
+            #If our equipment is an HT or DT, then we will want to assign Derek as the project manager due to the fact that these always move around!
+            if entryEquipID[0:2]=='HT' or entryEquipID[0:2]=='DT':
+                projectManager='Derek Dodson (Assigned to All HT/DT Equipment)'
 
-        #Defining our variable for the foreman timecard
-        foreman = 'No Timecard Entry for This Equipment/Date'
+            #==================================================================================
+            #Pulling our Heavy Job equipment info for this date/equipment:
+            filters = {'date': entryDate, 'equipmentCode': entryEquipID}
+            data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", filters)
 
-        #Updating our list:
-        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
+            #==================================================================================
+            #Iterating through our heavy job data, calculating the difference from the GPS data, and updating our list:
 
-    #=======================================
-    #If a blank list is not returned, let's pull the actual hours and perform our calcs
-    else:
-        #If there are mutliple entries for this equipment, we will want to iterate through each and total the hours:
-        heavyJobHours = 0
-        foreman = ''
+            #=======================================
+            #If our database query returns a blank list, that means that there is no entry for this equipment in heavy job and we will want to set the hours equal to zero:
+            if data==[]:
+                heavyJobHours = 0
 
-        for j in range(len(data)):
-            heavyJobHours = heavyJobHours+float(data[j][7])
-            foreman = foreman+data[j][6]+', '
+                #Calculating our hour delta:
+                hourDelta = round(entryGPShours-heavyJobHours,2)
 
-        #Calculating our hour delta:
-        hourDelta = round(entryGPShours-heavyJobHours,2)
-        
-        #Updating our list:
-        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
+                #Defining our variable for the foreman timecard
+                foreman = 'No Timecard Entry for This Equipment/Date'
+
+                #Updating our list:
+                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
+
+            #=======================================
+            #If a blank list is not returned, let's pull the actual hours and perform our calcs
+            else:
+                #If there are mutliple entries for this equipment, we will want to iterate through each and total the hours:
+                heavyJobHours = 0
+                foreman = ''
+
+                for j in range(len(data)):
+                    heavyJobHours = heavyJobHours+float(data[j][7])
+                    foreman = foreman+data[j][6]+', '
+
+                #Calculating our hour delta:
+                hourDelta = round(entryGPShours-heavyJobHours,2)
+                
+                #Updating our list:
+                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
 
 print(equipmentUtilizationList)
@@ -566,10 +601,6 @@ print(equipmentUtilizationList)
 #region
 
 #ITEMS TO ADD FOR UPDATE!
-#> ONLY SHOW ENTRIES FOR EQUIPMENT WITH MORE THAN 0.5 GPS HOURS!
-#> MAKE SURE TO CHANGE GPS HOURS TO EQUAL 8 IF THE CHARGE TYPE IS 8HR/DAY!
-#> FOR DT/HT EQUIPMENT, THE ASSIGNED PROJECT MANAGER NEEDS TO BE DEREK? THESE MOVE AROUND SO MUCH THAT DEREK WILL NEED TO CODE!
-#> IF NO PROJECT IS RETURNED AND IT'S AN ADDRESSS, HAVE THIS PM NAME COLUMN POPULATE WITH A PM BASED ON CITY AND ADD A "?" TO IT
 #> ADD CONDITIONAL FORMATTING FOR CLORING CELLS, NOT THAT NASTY RED
 #> ONLY HIGHLIGHT RED HOUR DIFFERENCES GREATER THAN 0.25? MAYBE SEE HOW ACCURATE YOUR SYSTEM GPS DATA IS FIRST
 #> ADD A FOREMAN TIMECARD COLUMN THAT SHOWS THE TIMECARD THAT THE EQUIPMENT ENTRY IS CHARGED TO? CAN JUST BE BLANK IF THERE ISN'T ONE

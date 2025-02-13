@@ -108,7 +108,28 @@ def most_frequent(lst):
         
     counter = Counter(lst)
     return counter.most_common(1)[0][0]  # Get the most common value
+
+
+#================================================================
+#Writing a function that will convert the HCSS API UTC date/time into a date that is in US central time: 
+from datetime import datetime
+from dateutil import tz
+
+def convert_utc_to_central(utc_date_str: str) -> str:
+    # Define UTC and Central Time zones
+    utc_zone = tz.tzutc()
+    central_zone = tz.gettz('America/Chicago')
     
+    # Parse the input date string
+    utc_datetime = datetime.fromisoformat(utc_date_str)
+    
+    # Convert to Central Time
+    central_datetime = utc_datetime.astimezone(central_zone)
+    
+    # Return the date in YYYY-MM-DD format
+    return central_datetime.strftime('%Y-%m-%d')
+
+
 
 print('SUCCESS')
 
@@ -1441,7 +1462,6 @@ if response.status_code == 200:
         if equipID in telematicEquipIDconversionDict:
             equipID=telematicEquipIDconversionDict[equipID]
 
-
         #===================
         #Updating our list:
         equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
@@ -1479,31 +1499,39 @@ def insert_data(data: dict):
 #Inserting the data into our Supabase database table:
 for i in range(len(equipmentInfoList)):
 
-    data_to_insert = {
-        'id':rowcount,
-        'date':todayCentral,
-        'equipmentHCSSAPIid':equipmentInfoList[i][0],
-        'equipID':equipmentInfoList[i][1],
-        'equipDescription':equipmentInfoList[i][2],
-        'fuelUom':equipmentInfoList[i][3],
-        'lastBearing':equipmentInfoList[i][4],
-        'lastLatitude':equipmentInfoList[i][5],
-        'lastLongitude':equipmentInfoList[i][6],
-        'lastLocationDateTime':equipmentInfoList[i][7],
-        'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
-        'lastHourMeterReadingInHours':equipmentInfoList[i][9],
-        'lastHourReadingDateTime':equipmentInfoList[i][10],
-        'lastEngineStatus':equipmentInfoList[i][11],
-        'lastEngineStatusDateTime':equipmentInfoList[i][12]
+    #===========================================================
+    #Using our function defined at the top of this script to convert the "lastHourReadingDateTime" from our API data into a date that is in US central time:
+    central_date = convert_utc_to_central(equipmentInfoList[i][10])
 
+    #===========================================================
+    #If our meter reading date is not for today, then we don't want to add it to our database! This API call returns the last GPS reading for EVERY SINGLE piece of equipment that we have ever owned!
+    if central_date==todayCentral:
+        #===========================================================
+        #Updating our dictionary:
+        data_to_insert = {
+            'id':rowcount,
+            'date':central_date,
+            'equipmentHCSSAPIid':equipmentInfoList[i][0],
+            'equipID':equipmentInfoList[i][1],
+            'equipDescription':equipmentInfoList[i][2],
+            'fuelUom':equipmentInfoList[i][3],
+            'lastBearing':equipmentInfoList[i][4],
+            'lastLatitude':equipmentInfoList[i][5],
+            'lastLongitude':equipmentInfoList[i][6],
+            'lastLocationDateTime':equipmentInfoList[i][7],
+            'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
+            'lastHourMeterReadingInHours':equipmentInfoList[i][9],
+            'lastHourReadingDateTime':equipmentInfoList[i][10],
+            'lastEngineStatus':equipmentInfoList[i][11],
+            'lastEngineStatusDateTime':equipmentInfoList[i][12]
+        }
 
-    }
+        rowcount=rowcount+1
 
-    rowcount=rowcount+1
+        #===========================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
 
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
 
 #Printing out the code block runtime to the console: 
 print('<SUCCESS>')
