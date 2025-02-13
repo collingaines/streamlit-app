@@ -1501,7 +1501,7 @@ for i in range(len(equipmentInfoList)):
 
     #===========================================================
     #Using our function defined at the top of this script to convert the "lastHourReadingDateTime" from our API data into a date that is in US central time:
-    central_date = convert_utc_to_central(equipmentInfoList[i][10])
+    central_date = convert_utc_to_central(str(equipmentInfoList[i][10]))
 
     #===========================================================
     #If our meter reading date is not for today, then we don't want to add it to our database! This API call returns the last GPS reading for EVERY SINGLE piece of equipment that we have ever owned!
