@@ -1388,6 +1388,21 @@ HEADERS = {
 response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
 
 #=========================================
+#Creating a dictionary of values that converts the equipment IDs shown in our telematics system to the standard IDs defined in our "Master Equipment List" smartsheet:
+
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+telematicEquipIDconversionDict = {}
+
+for MyRow in MySheet.rows:
+    telematicEquipID = MyRow.cells[13].value
+    masterListEquipID = MyRow.cells[0].value
+
+    if telematicEquipID!=None:
+        telematicEquipIDconversionDict[telematicEquipID]=masterListEquipID
+
+
+#=========================================
 #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
 if response.status_code == 200:
     data = response.json()
@@ -1410,24 +1425,20 @@ if response.status_code == 200:
         lastHourReadingDateTime = results[i].get('lastHourMeterReadingDateTime')
         lastEngineStatus = results[i].get('lastEngineStatus')
         lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
-
+        
+        #===================
+        #For some dumb reason, when SS-08 got entered into telematics it had a space added at the end. Correcting here:
         if equipID=='SS-08 ':
             equipID='SS-08'
 
-        #=========================================
+        #===================
         #Converting equipment IDs to our standard formatting as is listed in the "Equipment Master List" smartsheet:
-        
+        if equipID in telematicEquipIDconversionDict:
+            equipID=telematicEquipIDconversionDict[equipID]
 
 
-
-
-
-
-
-
-
-
-        #=========================================
+        #===================
+        #Updating our list:
         equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
 
 
@@ -1773,7 +1784,7 @@ start_time = time.time()
 
 
 #==============================================================================================================================================================================================
-#Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
+#Pulling the Heavy Job Equipment data from the HCSS API and updating our "Equipment GPS All Data" database
 #region
 
 #===============================================================================================
@@ -1817,6 +1828,20 @@ payload = {
 #===============================================================================================
 #Finally, let's generate store our response which includes all of our raw data to a variable:
 response = requests.post(HCSS_API_ENDPOINT, headers=HEADERS, json=payload)
+
+#===============================================================================================
+#Creating a dictionary of values that converts the equipment IDs shown in Heavy Job to the standard IDs defined in our "Master Equipment List" smartsheet:
+
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+heavyJobEquipIDconversionDict = {}
+
+for MyRow in MySheet.rows:
+    heavyJobEquipID = MyRow.cells[14].value
+    masterListEquipID = MyRow.cells[0].value
+
+    if heavyJobEquipID!=None:
+        heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
 
 
 #===============================================================================================
@@ -1876,7 +1901,6 @@ if response.status_code == 200:
         #The hours charged for each piece of eqiupment come in a list of dictinoaries for each cost code, so let's create a list here to store these values
         costCodeHourList = results[i].get('hoursDetails')
 
-
         for j in range(len(costCodeHourList)):
             costCodeHCSSAPIid = costCodeHourList[j].get('costCode').get('costCodeId')
             costCodeCode = costCodeHourList[j].get('costCode').get('costCodeCode')
@@ -1885,6 +1909,14 @@ if response.status_code == 200:
             totalHours = costCodeHourList[j].get('totalHours')
             isInTimeCardHours = costCodeHourList[j].get('isInTimeCardHours')
             isCosted = costCodeHourList[j].get('isCosted')
+
+            #======================================================
+            #Converting our heavy job equipment ID to the standard equipment ID defined in the "Master Equipment List" smartsheet using our dictionary created above:
+            #heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
+
+            if equipmentCode in heavyJobEquipIDconversionDict:
+                equipmentCode=heavyJobEquipIDconversionDict[equipmentCode]
+            
 
             #======================================================
             #Finally, updating our database. Let's keep it inside of this loop so that a new row of our databse is added for each cost code entry for this equipment:
