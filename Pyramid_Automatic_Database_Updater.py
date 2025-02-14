@@ -1855,6 +1855,7 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 
 start_time = time.time()
 
+
 try:
 
     #==============================================================================================================================================================================================
@@ -2226,8 +2227,8 @@ try:
 
 except:
     recipient = 'collin@ddmcc.net'
-    subject = '"Master_Equipment_Timecard_Data" Database Update Failure'
-    emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed.'
+    subject = '"Master_Equipment_Timecard_Data" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
     
     sendEmail(recipient, subject, emailBody)
 
