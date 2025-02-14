@@ -460,148 +460,171 @@ print('Connecting to the Smartsheet API and pulling data from the "Equipment Ins
 
 start_time = time.time()
 
-#==========================================================================================================================================================================
-#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                            
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                            
-truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-#==========================================================================================================================================================================
-#Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet
+    #==========================================================================================================================================================================
+    #Deleting all existing entries in our Supabase "Equipment_Inspection_Log" database table:
+    #region 
 
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('8508814782687108')
+    def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+                                
+        # Truncate the specified table
+        response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                
+    truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
 
-#==========================================================================================================================================================================
-#Now, let's itterate through each of the smartsheet rows and add the values to a list which we can send to our database: 
-dbEntryList = []
-rowcount = 1
+    #endregion
 
-for MyRow in MySheet.rows:
-    #============================================================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    equipmentDescription = MyRow.cells[0].value
-    jobSite = MyRow.cells[1].value
-    inspectionDate = MyRow.cells[2].value
-    notes = MyRow.cells[3].value
-    superintendent = MyRow.cells[4].value
-    foremanCapataz = MyRow.cells[5].value
-    hourReader = MyRow.cells[6].value
-    fuelLevel = MyRow.cells[7].value
-    fireExtinguisher = MyRow.cells[8].value
-    mirrorCondition = MyRow.cells[9].value
-    glassCondition = MyRow.cells[10].value
-    batteryCondition = MyRow.cells[11].value
-    engineOilLevel = MyRow.cells[12].value
-    hydraulicOilLevel = MyRow.cells[13].value
-    coolantLevel = MyRow.cells[14].value
-    engineBelt = MyRow.cells[15].value
-    fluidLeaks = MyRow.cells[16].value
-    hornWorking = MyRow.cells[17].value
-    backupAlarmWorking = MyRow.cells[18].value
-    lightsWorking = MyRow.cells[19].value
-    seatBeltWorking = MyRow.cells[20].value
-    brakesWorking = MyRow.cells[21].value
-    tireTrackCondition = MyRow.cells[22].value
-    forks = MyRow.cells[23].value
-    bristleCondition = MyRow.cells[24].value
-    drumCondition = MyRow.cells[25].value
-    bucketCondition = MyRow.cells[26].value
-    trailerBrakes = MyRow.cells[27].value
-    operatorName = MyRow.cells[28].value
-    foreman = MyRow.cells[29].value
 
-    #============================================================================
-    #Pulling the equipment ID from the equipment description:
-    if equipmentDescription==None:
-        equipID = 'No Eqiup ID Found'
-    elif ":" in equipmentDescription:
-        equipID = equipmentDescription[0:equipmentDescription.index(':')]
-    else:
-        equipID = 'No Eqiup ID Found'
+    #==========================================================================================================================================================================
+    #Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet
+    #region 
 
-    #============================================================================
-    #Pulling the job number from our jobsite value:
-    if jobSite==None:
-        jobNum = 'None Found'
-    else:
-        jobNum = jobSite[0:5]
+    #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+    MySheet = smart.Sheets.get_sheet('8508814782687108')
 
-    #============================================================================
-    #Converting our date value into our standard format (2025-09-30):
-    if inspectionDate==None:
-        dateFormatted = 'None Found'
-    else:
-        year = '20'+str(inspectionDate)[6:8]
-        month = str(inspectionDate)[0:2]
-        day = str(inspectionDate)[3:5]
+    #endregion
 
-        dateFormatted = str(inspectionDate)
-        #dateFormatted = year+'-'+month+'-'+day
 
-    #============================================================================
-    #Function to insert data into the "Cost_Code_Classifiers" table
-    def insert_data(data: dict):
-        response = supabase_client.table('Equipment_Inspection_Log').insert(data).execute()
-        return response
+    #==========================================================================================================================================================================
+    #Now, let's itterate through each of the smartsheet rows and add the values to a list which we can send to our database: 
+    #region 
 
-    #============================================================================
-    #Inserting the data into our Supabase database table:
-    data_to_insert = {
-            'id':rowcount,
-            'equipmentID':equipID,
-            'equipmentDesc':equipmentDescription,
-            'jobsite':jobSite,
-            'jobNum':jobNum,
-            'inspectionDate':dateFormatted,
-            'notes':notes,
-            'superintendent':superintendent,
-            'foremanCapataz':foremanCapataz,
-            'hourReading':hourReader,
-            'fuelLevel':fuelLevel,
-            'fireExtinguisher':fireExtinguisher,
-            'mirrorCondition':mirrorCondition,
-            'glassCondition':glassCondition,
-            'batteryCondition':batteryCondition,
-            'engineOilLevel':engineOilLevel,
-            'hydraulicOilLevel':hydraulicOilLevel,
-            'coolantLevel':coolantLevel,
-            'engineBelt':engineBelt,
-            'fluidLeaks':fluidLeaks,
-            'hornWorking':hornWorking,
-            'backupAlarmWorking':backupAlarmWorking,
-            'lightsWorking':lightsWorking,
-            'seatbeltWorking':seatBeltWorking,
-            'brakesWorking':brakesWorking,
-            'tireTrackCondition':tireTrackCondition,
-            'forks':forks,
-            'bristleCondition':bristleCondition,
-            'drumCondition':drumCondition,
-            'bucketCondition':bucketCondition,
-            'trailerBrakes':trailerBrakes,
-            'operatorName':operatorName,
-            'foreman':foreman
+    dbEntryList = []
+    rowcount = 1
 
-        }
+    for MyRow in MySheet.rows:
+        #============================================================================
+        #Defining some initial values that will be pulled straight from the smartsheet: 
+        equipmentDescription = MyRow.cells[0].value
+        jobSite = MyRow.cells[1].value
+        inspectionDate = MyRow.cells[2].value
+        notes = MyRow.cells[3].value
+        superintendent = MyRow.cells[4].value
+        foremanCapataz = MyRow.cells[5].value
+        hourReader = MyRow.cells[6].value
+        fuelLevel = MyRow.cells[7].value
+        fireExtinguisher = MyRow.cells[8].value
+        mirrorCondition = MyRow.cells[9].value
+        glassCondition = MyRow.cells[10].value
+        batteryCondition = MyRow.cells[11].value
+        engineOilLevel = MyRow.cells[12].value
+        hydraulicOilLevel = MyRow.cells[13].value
+        coolantLevel = MyRow.cells[14].value
+        engineBelt = MyRow.cells[15].value
+        fluidLeaks = MyRow.cells[16].value
+        hornWorking = MyRow.cells[17].value
+        backupAlarmWorking = MyRow.cells[18].value
+        lightsWorking = MyRow.cells[19].value
+        seatBeltWorking = MyRow.cells[20].value
+        brakesWorking = MyRow.cells[21].value
+        tireTrackCondition = MyRow.cells[22].value
+        forks = MyRow.cells[23].value
+        bristleCondition = MyRow.cells[24].value
+        drumCondition = MyRow.cells[25].value
+        bucketCondition = MyRow.cells[26].value
+        trailerBrakes = MyRow.cells[27].value
+        operatorName = MyRow.cells[28].value
+        foreman = MyRow.cells[29].value
 
-    rowcount=rowcount+1
+        #============================================================================
+        #Pulling the equipment ID from the equipment description:
+        if equipmentDescription==None:
+            equipID = 'No Eqiup ID Found'
+        elif ":" in equipmentDescription:
+            equipID = equipmentDescription[0:equipmentDescription.index(':')]
+        else:
+            equipID = 'No Eqiup ID Found'
 
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
+        #============================================================================
+        #Pulling the job number from our jobsite value:
+        if jobSite==None:
+            jobNum = 'None Found'
+        else:
+            jobNum = jobSite[0:5]
 
+        #============================================================================
+        #Converting our date value into our standard format (2025-09-30):
+        if inspectionDate==None:
+            dateFormatted = 'None Found'
+        else:
+            year = '20'+str(inspectionDate)[6:8]
+            month = str(inspectionDate)[0:2]
+            day = str(inspectionDate)[3:5]
+
+            dateFormatted = str(inspectionDate)
+            #dateFormatted = year+'-'+month+'-'+day
+
+        #============================================================================
+        #Function to insert data into the "Cost_Code_Classifiers" table
+        def insert_data(data: dict):
+            response = supabase_client.table('Equipment_Inspection_Log').insert(data).execute()
+            return response
+
+        #============================================================================
+        #Inserting the data into our Supabase database table:
+        data_to_insert = {
+                'id':rowcount,
+                'equipmentID':equipID,
+                'equipmentDesc':equipmentDescription,
+                'jobsite':jobSite,
+                'jobNum':jobNum,
+                'inspectionDate':dateFormatted,
+                'notes':notes,
+                'superintendent':superintendent,
+                'foremanCapataz':foremanCapataz,
+                'hourReading':hourReader,
+                'fuelLevel':fuelLevel,
+                'fireExtinguisher':fireExtinguisher,
+                'mirrorCondition':mirrorCondition,
+                'glassCondition':glassCondition,
+                'batteryCondition':batteryCondition,
+                'engineOilLevel':engineOilLevel,
+                'hydraulicOilLevel':hydraulicOilLevel,
+                'coolantLevel':coolantLevel,
+                'engineBelt':engineBelt,
+                'fluidLeaks':fluidLeaks,
+                'hornWorking':hornWorking,
+                'backupAlarmWorking':backupAlarmWorking,
+                'lightsWorking':lightsWorking,
+                'seatbeltWorking':seatBeltWorking,
+                'brakesWorking':brakesWorking,
+                'tireTrackCondition':tireTrackCondition,
+                'forks':forks,
+                'bristleCondition':bristleCondition,
+                'drumCondition':drumCondition,
+                'bucketCondition':bucketCondition,
+                'trailerBrakes':trailerBrakes,
+                'operatorName':operatorName,
+                'foreman':foreman
+
+            }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = '"Equipment_Inspection_Log" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Equipment_Inspection_Log" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
     
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
@@ -616,83 +639,104 @@ print('Connecting to the Smartsheet API and pulling data from the "Equipment Mas
 
 start_time = time.time()
 
-#==========================================================================================================================================================================
-#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                            
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                            
-truncate_table(supabase_url, supabase_key, 'Master_Equipment_Asset_List')
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-#==========================================================================================================================================================
-#First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+    #==========================================================================================================================================================================
+    #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
+    #region
 
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('1336754816634756')
+    def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+                                
+        # Truncate the specified table
+        response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                
+    truncate_table(supabase_url, supabase_key, 'Master_Equipment_Asset_List')
 
-rowcount=1
-
-for MyRow in MySheet.rows:
-    #============================================================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    equipmentID = MyRow.cells[0].value
-    equipmentDescription = MyRow.cells[1].value
-    equipmentCategory = MyRow.cells[2].value
-    make = MyRow.cells[3].value
-    model = MyRow.cells[4].value
-    year = MyRow.cells[5].value
-    serialNumber = MyRow.cells[6].value
-    equipmentStatus = MyRow.cells[7].value
-    purchaseDate = MyRow.cells[8].value
-    sellDate = MyRow.cells[9].value
-    inspectionStatus = MyRow.cells[10].value
-    chargeType = MyRow.cells[11].value
-    telematicEquipID = MyRow.cells[13].value
-    heavyJobEquipID = MyRow.cells[14].value
-    ceEquipID = MyRow.cells[15].value
-
-    #============================================================================
-    #Function to insert data into the "Cost_Code_Classifiers" table
-    def insert_data(data: dict):
-        response = supabase_client.table('Master_Equipment_Asset_List').insert(data).execute()
-        return response
-
-    #============================================================================
-    #Inserting the data into our Supabase database table:
-    data_to_insert = {
-            'id':rowcount,
-            'equipID':equipmentID,
-            'equipDesc':equipmentDescription,
-            'equipCategory':equipmentCategory,
-            'make':make,
-            'model':model,
-            'year':year,
-            'serialNum':serialNumber,
-            'status':equipmentStatus,
-            'purchaseDate':purchaseDate,
-            'sellDate':sellDate,
-            'inspectionsReqd':inspectionStatus,
-            'chargeType':chargeType,
-            'telematicEquipID':telematicEquipID,
-            'heavyJobEquipID':heavyJobEquipID,
-            'ceEquipID':ceEquipID
-        }
-
-    rowcount=rowcount+1
-
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
+    #endregion
 
 
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #==========================================================================================================================================================
+    #First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+    #region
+
+    #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+    rowcount=1
+
+    for MyRow in MySheet.rows:
+        #============================================================================
+        #Defining some initial values that will be pulled straight from the smartsheet: 
+        equipmentID = MyRow.cells[0].value
+        equipmentDescription = MyRow.cells[1].value
+        equipmentCategory = MyRow.cells[2].value
+        make = MyRow.cells[3].value
+        model = MyRow.cells[4].value
+        year = MyRow.cells[5].value
+        serialNumber = MyRow.cells[6].value
+        equipmentStatus = MyRow.cells[7].value
+        purchaseDate = MyRow.cells[8].value
+        sellDate = MyRow.cells[9].value
+        inspectionStatus = MyRow.cells[10].value
+        chargeType = MyRow.cells[11].value
+        telematicEquipID = MyRow.cells[13].value
+        heavyJobEquipID = MyRow.cells[14].value
+        ceEquipID = MyRow.cells[15].value
+
+        #============================================================================
+        #Function to insert data into the "Cost_Code_Classifiers" table
+        def insert_data(data: dict):
+            response = supabase_client.table('Master_Equipment_Asset_List').insert(data).execute()
+            return response
+
+        #============================================================================
+        #Inserting the data into our Supabase database table:
+        data_to_insert = {
+                'id':rowcount,
+                'equipID':equipmentID,
+                'equipDesc':equipmentDescription,
+                'equipCategory':equipmentCategory,
+                'make':make,
+                'model':model,
+                'year':year,
+                'serialNum':serialNumber,
+                'status':equipmentStatus,
+                'purchaseDate':purchaseDate,
+                'sellDate':sellDate,
+                'inspectionsReqd':inspectionStatus,
+                'chargeType':chargeType,
+                'telematicEquipID':telematicEquipID,
+                'heavyJobEquipID':heavyJobEquipID,
+                'ceEquipID':ceEquipID
+            }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = '"Master_Equipment_Asset_List" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master_Equipment_Asset_List" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
+    
+    sendEmail(recipient, subject, emailBody)
+
 
 #endregion
 
@@ -707,97 +751,122 @@ print('Connecting to the Smartsheet API and updating dropdown lists...')
 
 start_time = time.time()
 
-#==========================================================================================================================================================
-#First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
+    #==========================================================================================================================================================
+    #First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
+    #region
 
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('1336754816634756')
+    #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
 
-equipmentInfoList = []
+    equipmentInfoList = []
 
-for MyRow in MySheet.rows:
-    #============================================================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    equipmentID = MyRow.cells[0].value
-    equipmentDescription = MyRow.cells[1].value
-    equipmentStatus = MyRow.cells[7].value
-    inspectionStatus = MyRow.cells[10].value
+    for MyRow in MySheet.rows:
+        #============================================================================
+        #Defining some initial values that will be pulled straight from the smartsheet: 
+        equipmentID = MyRow.cells[0].value
+        equipmentDescription = MyRow.cells[1].value
+        equipmentStatus = MyRow.cells[7].value
+        inspectionStatus = MyRow.cells[10].value
 
-    #If this is an active piece of equipment and requires an inspection, then we will add it to our list:
-    if equipmentStatus=="Active":
-        if inspectionStatus=='Yes':
-            equipmentListValue = equipmentID+': '+equipmentDescription
+        #If this is an active piece of equipment and requires an inspection, then we will add it to our list:
+        if equipmentStatus=="Active":
+            if inspectionStatus=='Yes':
+                equipmentListValue = equipmentID+': '+equipmentDescription
 
-            equipmentInfoList.append(equipmentListValue)
+                equipmentInfoList.append(equipmentListValue)
 
+        
+    #Sorting the equipment IDs so that they are in alphabetical order: 
+    equipmentInfoList=sorted(equipmentInfoList, key=lambda x: x[0])
+
+    #endregion
+
+
+    #==========================================================================================================================================================
+    #Next, let's navigate to our equipment inspection sheet and update the list of dropdown values:
+    #region
+
+    #TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
+
+    # Step 1: Get the list of columns and find the dropdown column ID
+    columns = smart.Sheets.get_sheet('1336754816634756').columns
+    dropdown_column = next((col for col in columns if col.title == "TEST"), None)
+
+    if not dropdown_column:
+        print(f"Column not found!")
+        exit()
+
+    COLUMN_ID = dropdown_column.id  # Store the column ID
+    #current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
+
+    # Step 2: Add new options to the dropdown list
+    new_options = equipmentInfoList  # Replace with your items
+    # updated_options = list(set(new_options))  # Ensure unique values
+
+    # Step 3: Update the column WITHOUT specifying "id"
+    updated_column = smartsheet.models.Column()
+    updated_column.title = dropdown_column.title  # Keep column title the same
+    updated_column.type = "PICKLIST"  # Explicitly set the column type
+    updated_column.options = new_options  # Apply new dropdown values
+
+    # Step 4: Send update request
+    response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
+
+    #print(f"Updated Dropdown List: {new_options}")
+
+    #endregion
+
+
+    #==========================================================================================================================================================
+    #Next, let's navigate to our equipment fuel log smartsheet and update the list of dropdown values:
+    #region
+
+
+    #TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
+
+    # Step 1: Get the list of columns and find the dropdown column ID
+    columns = smart.Sheets.get_sheet('1336754816634756').columns
+    dropdown_column = next((col for col in columns if col.title == "TEST"), None)
+
+    if not dropdown_column:
+        print(f"Column not found!")
+        exit()
+
+    COLUMN_ID = dropdown_column.id  # Store the column ID
+    #current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
+
+    # Step 2: Add new options to the dropdown list
+    new_options = equipmentInfoList  # Replace with your items
+    # updated_options = list(set(new_options))  # Ensure unique values
+
+    # Step 3: Update the column WITHOUT specifying "id"
+    updated_column = smartsheet.models.Column()
+    updated_column.title = dropdown_column.title  # Keep column title the same
+    updated_column.type = "PICKLIST"  # Explicitly set the column type
+    updated_column.options = new_options  # Apply new dropdown values
+
+    # Step 4: Send update request
+    response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = 'Failure to Update the "Master Equipment List" and "Heavy Equipment Fuel Log" Smartsheet Dropdowns in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master Equipment List" and "Heavy Equipment Fuel Log" Smartsheet dropdowns in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
     
-#Sorting the equipment IDs so that they are in alphabetical order: 
-equipmentInfoList=sorted(equipmentInfoList, key=lambda x: x[0])
-
-#==========================================================================================================================================================
-#Next, let's navigate to our equipment inspection sheet and update the list of dropdown values:
-#TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
-
-# Step 1: Get the list of columns and find the dropdown column ID
-columns = smart.Sheets.get_sheet('1336754816634756').columns
-dropdown_column = next((col for col in columns if col.title == "TEST"), None)
-
-if not dropdown_column:
-    print(f"Column not found!")
-    exit()
-
-COLUMN_ID = dropdown_column.id  # Store the column ID
-#current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
-
-# Step 2: Add new options to the dropdown list
-new_options = equipmentInfoList  # Replace with your items
-# updated_options = list(set(new_options))  # Ensure unique values
-
-# Step 3: Update the column WITHOUT specifying "id"
-updated_column = smartsheet.models.Column()
-updated_column.title = dropdown_column.title  # Keep column title the same
-updated_column.type = "PICKLIST"  # Explicitly set the column type
-updated_column.options = new_options  # Apply new dropdown values
-
-# Step 4: Send update request
-response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
-
-#print(f"Updated Dropdown List: {new_options}")
-
-#==========================================================================================================================================================
-#Next, let's navigate to our equipment fuel log smartsheet and update the list of dropdown values:
-#TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
-
-# Step 1: Get the list of columns and find the dropdown column ID
-columns = smart.Sheets.get_sheet('1336754816634756').columns
-dropdown_column = next((col for col in columns if col.title == "TEST"), None)
-
-if not dropdown_column:
-    print(f"Column not found!")
-    exit()
-
-COLUMN_ID = dropdown_column.id  # Store the column ID
-#current_options = list(dropdown_column.options)  # Convert TypedList to a standard list
-
-# Step 2: Add new options to the dropdown list
-new_options = equipmentInfoList  # Replace with your items
-# updated_options = list(set(new_options))  # Ensure unique values
-
-# Step 3: Update the column WITHOUT specifying "id"
-updated_column = smartsheet.models.Column()
-updated_column.title = dropdown_column.title  # Keep column title the same
-updated_column.type = "PICKLIST"  # Explicitly set the column type
-updated_column.options = new_options  # Apply new dropdown values
-
-# Step 4: Send update request
-response = smart.Sheets.update_column('1336754816634756', COLUMN_ID, updated_column)
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
@@ -812,338 +881,346 @@ print('Connecting to the HCSS API and updating our "Master_Project_Information" 
 
 start_time = time.time()
 
-#==============================================================================================================================================================================================
-#First, let's pull our project data from our smartsheet and update our database:
-#region 
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
+    #==============================================================================================================================================================================================
+    #First, let's pull our project data from our smartsheet and update our database:
+    #region 
 
-#============================================================================
-#Pulling data from our smartsheet and saving it to a list
-
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('3259554229866372')
-
-smartSheetProjectInfoList = []
-
-for MyRow in MySheet.rows:
-    #========================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    hcssAPIid = MyRow.cells[0].value
-    hcssLegacyID = MyRow.cells[1].value
-    jobNum = MyRow.cells[2].value
-    jobName = MyRow.cells[3].value
-    jobCreationDate = MyRow.cells[4].value
-    jobStatus = MyRow.cells[5].value
-    lattitude = MyRow.cells[6].value
-    longitude = MyRow.cells[7].value
-    address1 = MyRow.cells[8].value
-    address2 = MyRow.cells[9].value
-    jobCity = MyRow.cells[10].value
-    jobState = MyRow.cells[11].value
-    jobZip = MyRow.cells[12].value
-    projectManager = MyRow.cells[13].value
-    projectSuper = MyRow.cells[14].value
-    startDate = MyRow.cells[15].value
-    endDate = MyRow.cells[16].value
-    projectRadius = MyRow.cells[17].value
-
-    #========================================
-    #Updating our list:
-    smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate, projectRadius])
-
-
-#============================================================================
-#Deleting all existing entries in our Supabase "Master_Project_Information" database table:
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                            
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                            
-truncate_table(supabase_url, supabase_key, 'Master_Project_Information')
-
-#============================================================================
-#Function to insert data into the "Master_Project_Information" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Project_Information').insert(data).execute()
-    return response
-
-#============================================================================
-#Inserting the data into our Supabase database table:
-rowcount = 1
-
-for i in range(len(smartSheetProjectInfoList)):
-    data_to_insert = {
-        'id':rowcount,
-        'jobNum':smartSheetProjectInfoList[i][2],
-        'jobDescription':smartSheetProjectInfoList[i][3],
-        'creationDate':smartSheetProjectInfoList[i][4],
-        'jobStatus':smartSheetProjectInfoList[i][5],
-        'lattitude':smartSheetProjectInfoList[i][6],
-        'longitude':smartSheetProjectInfoList[i][7],
-        'address1':smartSheetProjectInfoList[i][8],
-        'address2':smartSheetProjectInfoList[i][9],
-        'city':smartSheetProjectInfoList[i][10],
-        'state':smartSheetProjectInfoList[i][11],
-        'zip':smartSheetProjectInfoList[i][12],
-        'projectManager':smartSheetProjectInfoList[i][13],
-        'projectSuperintendent':smartSheetProjectInfoList[i][14],
-        'startDate':smartSheetProjectInfoList[i][15],
-        'endDate':smartSheetProjectInfoList[i][16],
-        'hcssAPIid':smartSheetProjectInfoList[i][0],
-        'legacyID':smartSheetProjectInfoList[i][1],
-        'projectRadius':smartSheetProjectInfoList[i][17]
-
-    }
-
-    rowcount=rowcount+1
 
     #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
+    #Pulling data from our smartsheet and saving it to a list
 
-#endregion
+    #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+    MySheet = smart.Sheets.get_sheet('3259554229866372')
+
+    smartSheetProjectInfoList = []
+
+    for MyRow in MySheet.rows:
+        #========================================
+        #Defining some initial values that will be pulled straight from the smartsheet: 
+        hcssAPIid = MyRow.cells[0].value
+        hcssLegacyID = MyRow.cells[1].value
+        jobNum = MyRow.cells[2].value
+        jobName = MyRow.cells[3].value
+        jobCreationDate = MyRow.cells[4].value
+        jobStatus = MyRow.cells[5].value
+        lattitude = MyRow.cells[6].value
+        longitude = MyRow.cells[7].value
+        address1 = MyRow.cells[8].value
+        address2 = MyRow.cells[9].value
+        jobCity = MyRow.cells[10].value
+        jobState = MyRow.cells[11].value
+        jobZip = MyRow.cells[12].value
+        projectManager = MyRow.cells[13].value
+        projectSuper = MyRow.cells[14].value
+        startDate = MyRow.cells[15].value
+        endDate = MyRow.cells[16].value
+        projectRadius = MyRow.cells[17].value
+
+        #========================================
+        #Updating our list:
+        smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate, projectRadius])
 
 
-#==============================================================================================================================================================================================
-#Next, pulling the most recent project data from our HCSS API:
-#region
+    #============================================================================
+    #Deleting all existing entries in our Supabase "Master_Project_Information" database table:
+    def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+                                
+        # Truncate the specified table
+        response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                
+    truncate_table(supabase_url, supabase_key, 'Master_Project_Information')
 
-#============================================
-#Connecting to the timecard endpoint of the HCSS API:
-HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/jobs"
+    #============================================================================
+    #Function to insert data into the "Master_Project_Information" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Project_Information').insert(data).execute()
+        return response
 
-#============================================
-#Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
-from datetime import datetime
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+    rowcount = 1
 
-def get_current_datetime():
-    now = datetime.utcnow()
-    formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return formatted_datetime
+    for i in range(len(smartSheetProjectInfoList)):
+        data_to_insert = {
+            'id':rowcount,
+            'jobNum':smartSheetProjectInfoList[i][2],
+            'jobDescription':smartSheetProjectInfoList[i][3],
+            'creationDate':smartSheetProjectInfoList[i][4],
+            'jobStatus':smartSheetProjectInfoList[i][5],
+            'lattitude':smartSheetProjectInfoList[i][6],
+            'longitude':smartSheetProjectInfoList[i][7],
+            'address1':smartSheetProjectInfoList[i][8],
+            'address2':smartSheetProjectInfoList[i][9],
+            'city':smartSheetProjectInfoList[i][10],
+            'state':smartSheetProjectInfoList[i][11],
+            'zip':smartSheetProjectInfoList[i][12],
+            'projectManager':smartSheetProjectInfoList[i][13],
+            'projectSuperintendent':smartSheetProjectInfoList[i][14],
+            'startDate':smartSheetProjectInfoList[i][15],
+            'endDate':smartSheetProjectInfoList[i][16],
+            'hcssAPIid':smartSheetProjectInfoList[i][0],
+            'legacyID':smartSheetProjectInfoList[i][1],
+            'projectRadius':smartSheetProjectInfoList[i][17]
 
-endDate = str(get_current_datetime())
+        }
 
-#============================================
-#Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
-query = {
-        # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-        # "foremanId": APIID,
-        # "employeeId": APIID,
-        #"startDate": "2021-01-01T00:00:00Z",
-        #"endDate": endDate
-        # "modifiedSince": "2019-08-24T14:15:22Z",
-        # "cursor": "string",
-         "limit": "1000000"
-}
+        rowcount=rowcount+1
 
-#============================================
-#Passing our token value generated above to our "HEADERS" variable:
-HEADERS = {
-"Authorization": "Bearer {}".format(token)
-}
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
 
-#============================================
-#Finally, let's generate store our response which includes all of our raw data to a variable:
-response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+    #endregion
 
-#A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
-if response.status_code == 200:
-    data = response.json()
 
-    projectInfoList = []
+    #==============================================================================================================================================================================================
+    #Next, pulling the most recent project data from our HCSS API:
+    #region
 
+    #============================================
+    #Connecting to the timecard endpoint of the HCSS API:
+    HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/jobs"
+
+    #============================================
+    #Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
+    from datetime import datetime
+
+    def get_current_datetime():
+        now = datetime.utcnow()
+        formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return formatted_datetime
+
+    endDate = str(get_current_datetime())
+
+    #============================================
+    #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
+    query = {
+            # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+            # "foremanId": APIID,
+            # "employeeId": APIID,
+            #"startDate": "2021-01-01T00:00:00Z",
+            #"endDate": endDate
+            # "modifiedSince": "2019-08-24T14:15:22Z",
+            # "cursor": "string",
+            "limit": "1000000"
+    }
+
+    #============================================
+    #Passing our token value generated above to our "HEADERS" variable:
+    HEADERS = {
+    "Authorization": "Bearer {}".format(token)
+    }
+
+    #============================================
+    #Finally, let's generate store our response which includes all of our raw data to a variable:
+    response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+
+    #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+    if response.status_code == 200:
+        data = response.json()
+
+        projectInfoList = []
+
+
+        for i in range(len(data)):
+            hcssID = data[i].get('id')
+            legacyID = data[i].get('legacyId')
+            jobNum = data[i].get('code')
+            jobDescription = data[i].get('description')
+            createdDate = data[i].get('createdDate')
+            status = data[i].get('status')
+            lattitude = data[i].get('latitude')
+            longitude = data[i].get('longitude')
+            address1 = data[i].get('address1')
+            address2 = data[i].get('address2')
+            city = data[i].get('city')
+            state = data[i].get('state')
+            zip = data[i].get('zip')
+
+            projectInfoList.append([hcssID, legacyID, jobNum, jobDescription, createdDate, status, lattitude, longitude, address1, address2, city, state, zip])
+
+
+    #endregion
+
+
+    #==============================================================================================================================================================================================
+    #Creating a list of projects from our HCSS API data that ARE NOT currently in our smartsheet:
+    #region
+
+    #============================================================================
+    #First, let's create a list of all projects currently in our smartsheet using our "smartSheetProjectInfoList" created above, and while we're at it store each project's status in a dictionary:
+
+    #smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate])
+
+    currentSmartsheetProjectNumList = []
+    smartsheetProjectStatusDict = {}
+
+    for i in range(len(smartSheetProjectInfoList)):
+        currentSmartsheetProjectNumList.append(smartSheetProjectInfoList[i][2])
+
+        #Storing our project status in a dictionary:
+        smartsheetProjectStatusDict[smartSheetProjectInfoList[i][2]]=smartSheetProjectInfoList[i][5]
+
+
+    #============================================================================
+    #Next, let's iterate through our list of HCSS API project data and create a list of any projects not currently in our smartsheet data list created in the first step of this section. While we're at it, let's also check to update our status if need be:
+    newProjectInfoList = []
+
+    for i in range(len(projectInfoList)):
+        apiJobNum = projectInfoList[i][2]
+
+        #=======================================
+        #Updating the project status in our smartsheet if it has changed
+        entryStatus = projectInfoList[i][5]
+        originalStatus = smartsheetProjectStatusDict[apiJobNum]
+
+        #If the status in the smartsheet does not match the status in the API, then we will want to delete the existing entry 
+        if entryStatus!=originalStatus:
+            pass
+
+        #=======================================
+        #If this project isn't currently in our smartsheet, let's add it to our list of values to add to our smartsheet!
+        if apiJobNum not in currentSmartsheetProjectNumList:
+            newProjectInfoList.append([projectInfoList[i][0], projectInfoList[i][1], projectInfoList[i][2], projectInfoList[i][3], projectInfoList[i][4], projectInfoList[i][5], projectInfoList[i][6], projectInfoList[i][7], projectInfoList[i][8], projectInfoList[i][9], projectInfoList[i][10], projectInfoList[i][11], projectInfoList[i][12]])
+
+
+
+
+
+    #endregion
+
+
+    #==============================================================================================================================================================================================
+    #Updating our "Master Project Information List" database table with any new entries identified in the previous step:
+    #region
+
+    #=================================================================================================
+    #Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Master_Project_Information")
+
+    rowcount = len(data)+1
+
+    #============================================================================
+    #Function to insert data into the "Master_Project_Information" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Project_Information').insert(data).execute()
+        return response
+
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+
+    for i in range(len(newProjectInfoList)):
+        data_to_insert = {
+            'id':rowcount,
+            'jobNum':newProjectInfoList[i][2],
+            'jobDescription':newProjectInfoList[i][3],
+            'creationDate':newProjectInfoList[i][4],
+            'jobStatus':newProjectInfoList[i][5],
+            'lattitude':newProjectInfoList[i][6],
+            'longitude':newProjectInfoList[i][7],
+            'address1':newProjectInfoList[i][8],
+            'address2':newProjectInfoList[i][9],
+            'city':newProjectInfoList[i][10],
+            'state':newProjectInfoList[i][11],
+            'zip':newProjectInfoList[i][12],
+            'projectManager':'NEED TO ADD',
+            'projectSuperintendent':'NEED TO ADD',
+            'startDate':'NEED TO ADD',
+            'endDate':'NEED TO ADD',
+            'hcssAPIid':newProjectInfoList[i][0],
+            'legacyID':newProjectInfoList[i][1],
+            'projectRadius':'NEED TO ADD'
+
+        }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+    #endregion
+
+
+    #==============================================================================================================================================================================================
+    #Updating our "Master Project Information List" Smartsheet with our newly updated database values:
+    #region
+
+    #=================================================================================================
+    #First, let's clear all of the existing values from our smartsheet using the 'delete all rows' function defined at the top of this script:
+    delete_all_rows(3259554229866372)
+
+
+    #=================================================================================================
+    #Next, let's update the smartsheet with the values from our database:
+
+    #===============================================
+    #Fetching our database data:
+    data = fetch_data_from_table("Master_Project_Information")
+
+    #===============================================
+    # Specify your sheet ID
+    SHEET_ID = 3259554229866372 
+
+    #===============================================
+    #Iterating through our list of values from our databse and updating the smartsheet:
+    newRowList = []
 
     for i in range(len(data)):
-        hcssID = data[i].get('id')
-        legacyID = data[i].get('legacyId')
-        jobNum = data[i].get('code')
-        jobDescription = data[i].get('description')
-        createdDate = data[i].get('createdDate')
-        status = data[i].get('status')
-        lattitude = data[i].get('latitude')
-        longitude = data[i].get('longitude')
-        address1 = data[i].get('address1')
-        address2 = data[i].get('address2')
-        city = data[i].get('city')
-        state = data[i].get('state')
-        zip = data[i].get('zip')
 
-        projectInfoList.append([hcssID, legacyID, jobNum, jobDescription, createdDate, status, lattitude, longitude, address1, address2, city, state, zip])
-
-
-#endregion
-
-
-#==============================================================================================================================================================================================
-#Creating a list of projects from our HCSS API data that ARE NOT currently in our smartsheet:
-#region
-
-#============================================================================
-#First, let's create a list of all projects currently in our smartsheet using our "smartSheetProjectInfoList" created above, and while we're at it store each project's status in a dictionary:
-
-#smartSheetProjectInfoList.append([hcssAPIid, hcssLegacyID, jobNum, jobName, jobCreationDate, jobStatus, lattitude, longitude, address1, address2, jobCity, jobState, jobZip, projectManager, projectSuper, startDate, endDate])
-
-currentSmartsheetProjectNumList = []
-smartsheetProjectStatusDict = {}
-
-for i in range(len(smartSheetProjectInfoList)):
-    currentSmartsheetProjectNumList.append(smartSheetProjectInfoList[i][2])
-
-    #Storing our project status in a dictionary:
-    smartsheetProjectStatusDict[smartSheetProjectInfoList[i][2]]=smartSheetProjectInfoList[i][5]
+        newRowList.append(smartsheet.models.Row({
+            'to_top': True,  # Add row to the top of the sheet
+            'cells': [
+                {'column_id': 845215518904196, 'value': str(data[i][16])},  
+                {'column_id': 4676342050410372, 'value': str(data[i][17])},
+                {'column_id': 520962265272196, 'value': str(data[i][1])},
+                {'column_id': 5024561892642692, 'value': str(data[i][2])},
+                {'column_id': 2424542236725124, 'value': str(data[i][3])},
+                {'column_id': 6928141864095620, 'value': str(data[i][4])},
+                {'column_id': 1298642329882500, 'value': str(data[i][5])},
+                {'column_id': 5802241957252996, 'value': str(data[i][6])},
+                {'column_id': 3550442143567748, 'value': str(data[i][7])},
+                {'column_id': 8054041770938244, 'value': str(data[i][8])},
+                {'column_id': 2772762078957444, 'value': str(data[i][9])},
+                {'column_id': 7276361706327940, 'value': str(data[i][10])},
+                {'column_id': 735692376461188, 'value': str(data[i][11])},
+                {'column_id': 6150461799485316, 'value': str(data[i][12])},
+                {'column_id': 8163564913381252, 'value': str(data[i][13])},
+                {'column_id': 5315550624567172, 'value': str(data[i][14])},
+                {'column_id': 3063750810881924, 'value': str(data[i][15])},
+                {'column_id': 205938309156740, 'value': str(data[i][18])}
+            ]
+        }))
 
 
-#============================================================================
-#Next, let's iterate through our list of HCSS API project data and create a list of any projects not currently in our smartsheet data list created in the first step of this section. While we're at it, let's also check to update our status if need be:
-newProjectInfoList = []
-
-for i in range(len(projectInfoList)):
-    apiJobNum = projectInfoList[i][2]
-
-    #=======================================
-    #Updating the project status in our smartsheet if it has changed
-    entryStatus = projectInfoList[i][5]
-    originalStatus = smartsheetProjectStatusDict[apiJobNum]
-
-    #If the status in the smartsheet does not match the status in the API, then we will want to delete the existing entry 
-    if entryStatus!=originalStatus:
-        pass
-
-    #=======================================
-    #If this project isn't currently in our smartsheet, let's add it to our list of values to add to our smartsheet!
-    if apiJobNum not in currentSmartsheetProjectNumList:
-        newProjectInfoList.append([projectInfoList[i][0], projectInfoList[i][1], projectInfoList[i][2], projectInfoList[i][3], projectInfoList[i][4], projectInfoList[i][5], projectInfoList[i][6], projectInfoList[i][7], projectInfoList[i][8], projectInfoList[i][9], projectInfoList[i][10], projectInfoList[i][11], projectInfoList[i][12]])
+    #===============================================
+    #Add rows to the sheet
+    response = smart.Sheets.add_rows(SHEET_ID, newRowList)
 
 
 
+    #endregion
 
 
-#endregion
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
-
-#==============================================================================================================================================================================================
-#Updating our "Master Project Information List" database table with any new entries identified in the previous step:
-#region
-
-#=================================================================================================
-#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Project_Information")
-
-rowcount = len(data)+1
-
-#============================================================================
-#Function to insert data into the "Master_Project_Information" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Project_Information').insert(data).execute()
-    return response
-
-#============================================================================
-#Inserting the data into our Supabase database table:
-
-for i in range(len(newProjectInfoList)):
-    data_to_insert = {
-        'id':rowcount,
-        'jobNum':newProjectInfoList[i][2],
-        'jobDescription':newProjectInfoList[i][3],
-        'creationDate':newProjectInfoList[i][4],
-        'jobStatus':newProjectInfoList[i][5],
-        'lattitude':newProjectInfoList[i][6],
-        'longitude':newProjectInfoList[i][7],
-        'address1':newProjectInfoList[i][8],
-        'address2':newProjectInfoList[i][9],
-        'city':newProjectInfoList[i][10],
-        'state':newProjectInfoList[i][11],
-        'zip':newProjectInfoList[i][12],
-        'projectManager':'NEED TO ADD',
-        'projectSuperintendent':'NEED TO ADD',
-        'startDate':'NEED TO ADD',
-        'endDate':'NEED TO ADD',
-        'hcssAPIid':newProjectInfoList[i][0],
-        'legacyID':newProjectInfoList[i][1],
-        'projectRadius':'NEED TO ADD'
-
-    }
-
-    rowcount=rowcount+1
-
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
-
-#endregion
-
-
-#==============================================================================================================================================================================================
-#Updating our "Master Project Information List" Smartsheet with our newly updated database values:
-#region
-
-#=================================================================================================
-#First, let's clear all of the existing values from our smartsheet using the 'delete all rows' function defined at the top of this script:
-delete_all_rows(3259554229866372)
-
-
-#=================================================================================================
-#Next, let's update the smartsheet with the values from our database:
-
-#===============================================
-#Fetching our database data:
-data = fetch_data_from_table("Master_Project_Information")
-
-#===============================================
-# Specify your sheet ID
-SHEET_ID = 3259554229866372 
-
-#===============================================
-#Iterating through our list of values from our databse and updating the smartsheet:
-newRowList = []
-
-for i in range(len(data)):
-
-    newRowList.append(smartsheet.models.Row({
-        'to_top': True,  # Add row to the top of the sheet
-        'cells': [
-            {'column_id': 845215518904196, 'value': str(data[i][16])},  
-            {'column_id': 4676342050410372, 'value': str(data[i][17])},
-            {'column_id': 520962265272196, 'value': str(data[i][1])},
-            {'column_id': 5024561892642692, 'value': str(data[i][2])},
-            {'column_id': 2424542236725124, 'value': str(data[i][3])},
-            {'column_id': 6928141864095620, 'value': str(data[i][4])},
-            {'column_id': 1298642329882500, 'value': str(data[i][5])},
-            {'column_id': 5802241957252996, 'value': str(data[i][6])},
-            {'column_id': 3550442143567748, 'value': str(data[i][7])},
-            {'column_id': 8054041770938244, 'value': str(data[i][8])},
-            {'column_id': 2772762078957444, 'value': str(data[i][9])},
-            {'column_id': 7276361706327940, 'value': str(data[i][10])},
-            {'column_id': 735692376461188, 'value': str(data[i][11])},
-            {'column_id': 6150461799485316, 'value': str(data[i][12])},
-            {'column_id': 8163564913381252, 'value': str(data[i][13])},
-            {'column_id': 5315550624567172, 'value': str(data[i][14])},
-            {'column_id': 3063750810881924, 'value': str(data[i][15])},
-            {'column_id': 205938309156740, 'value': str(data[i][18])}
-        ]
-    }))
-
-
-#===============================================
-#Add rows to the sheet
-response = smart.Sheets.add_rows(SHEET_ID, newRowList)
-
-
-
-#endregion
-
-
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = 'Failure to Update the "Master_Project_Information" Database and "Master Equipment List" Smartsheet in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master_Project_Information" Database and "Master Equipment List" Smartsheet in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
@@ -1158,249 +1235,277 @@ print('Connecting to the HCSS API and updating our "Master_Timecard_Information"
 
 start_time = time.time()
 
-#==========================================================================================================================
-#First, let's create a dictionary that ties the project HCSS API ID to a project name for use when updating our database
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-#=================================
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Project_Information")
+    #==============================================================================================================================================================================================
+    #First, let's create a dictionary that ties the project HCSS API ID to a project name for use when updating our database
+    #region
 
-apiProjectNameDict = {}
+    #=================================
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Master_Project_Information")
 
-for i in range(len(data)):
-    apiID = data[i][16]
-    jobNum = data[i][1]
-    jobDescription = data[i][2]
+    apiProjectNameDict = {}
 
-    apiProjectNameDict[apiID]=[jobNum, jobDescription]
+    for i in range(len(data)):
+        apiID = data[i][16]
+        jobNum = data[i][1]
+        jobDescription = data[i][2]
 
-
-#=================================
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Users")
-
-userCraftDict = {}
-
-for i in range(len(data)):
-    employeeID = data[i][1]
-    employeeCraft = data[i][5]
-
-    userCraftDict[employeeID]=employeeCraft
+        apiProjectNameDict[apiID]=[jobNum, jobDescription]
 
 
+    #=================================
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Users")
+
+    userCraftDict = {}
+
+    for i in range(len(data)):
+        employeeID = data[i][1]
+        employeeCraft = data[i][5]
+
+        userCraftDict[employeeID]=employeeCraft
+
+    #endregion
 
 
-#==========================================================================================================================
-#Creating a list of timecard values for use later in calculating the timecard values for each foreman:
-#============================================
-#Connecting to the timecard endpoint of the HCSS API:
-HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/timeCardApprovalInfo"
+    #==============================================================================================================================================================================================
+    #Creating a list of timecard values for use later in calculating the timecard values for each foreman:
+    #region
 
-#Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
-from datetime import datetime
+    #============================================================================
+    #Connecting to the timecard endpoint of the HCSS API:
+    HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/timeCardApprovalInfo"
 
-def get_current_datetime():
-    now = datetime.utcnow()
-    formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return formatted_datetime
+    #Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
+    from datetime import datetime
 
-endDate = str(get_current_datetime())
+    def get_current_datetime():
+        now = datetime.utcnow()
+        formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return formatted_datetime
 
-#Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
-query = {
-        # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-        # "foremanId": APIID,
-        # "employeeId": APIID,
-        "startDate": "2021-01-01T00:00:00Z",
-        "endDate": endDate,
-        # "modifiedSince": "2019-08-24T14:15:22Z",
-        # "cursor": "string",
-         "limit": "1000"
-}
+    endDate = str(get_current_datetime())
 
-#Passing our token value generated above to our "HEADERS" variable:
-HEADERS = {
-"Authorization": "Bearer {}".format(token)
-}
-
-#Finally, let's generate store our response which includes all of our raw data to a variable:
-response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
-
-#A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
-if response.status_code == 200:
-    data = response.json()
-
-    #The data comes as a list with nested dictionaries format, with the data we want coming from the "results" index:
-    results = data.get('results')
-
-    timecardInfoList = []
-
-    for i in range(len(results)):
-        #Pulling our raw data from the API:
-        timecardID = results[i].get('id')
-        foremanAPIid = results[i].get('foreman').get('employeeId')
-        foremanCode = results[i].get('foreman').get('employeeCode')
-        employeeFN = results[i].get('foreman').get('employeeFirstName')
-        employeeLN = results[i].get('foreman').get('employeeLastName')
-        jobID = results[i].get('jobId')
-        businessUnitId = results[i].get('businessUnitId')
-        TCdate = results[i].get('date')
-        revision = results[i].get('revision')
-        shift = results[i].get('shift')
-        lastModifiedDateTime = results[i].get('lastModifiedDateTime')
-        isApproved = results[i].get('isApproved')
-        lastChangedBy = results[i].get('lastChangedByName')
-        lastPreparedBy = results[i].get('lastPreparedByName')
-        isReviewed = results[i].get('isReviewed')
-        isAccepted = results[i].get('isAccepted')
-        isRejected = results[i].get('isRejected')
-        firstSubmitted = results[i].get('lockedDateTime')
-
-        #Creating a variable for the full employee name
-        employee = str(employeeFN) + ' '+str(employeeLN)
-
-        #Using our dictionary created above to pull job name/num using the HCSS job ID:
-        #apiProjectNameDict[apiID]=[jobNum, jobDescription]
-        if jobID in apiProjectNameDict:
-            jobNum = apiProjectNameDict[jobID][0]
-            jobDescription = apiProjectNameDict[jobID][1]
-        else:
-            jobNum = 'None Found'
-            jobDescription = 'None Found'
-
-        #Using our dictionary created above to pull the employee trade from our employeeID:
-        #userCraftDict[employeeID]=employeeCraft
-        if foremanCode in userCraftDict:
-            employeeCraft = userCraftDict[foremanCode]
-        else:
-            employeeCraft = 'None'
-
-        #Converting the timecard date to datetime format:
-        import datetime
-
-        TCdateDT = datetime.datetime(int(str(TCdate)[0:4]),int(str(TCdate)[5:7]),int(str(TCdate)[8:10]), 0, 0, 0)
-
-        if firstSubmitted != None:
-            firstSubmittedDT = datetime.datetime(int(str(firstSubmitted)[0:4]),int(str(firstSubmitted)[5:7]),int(str(firstSubmitted)[8:10]),abs(int(str(firstSubmitted)[11:13])-5),int(str(firstSubmitted)[14:16]),int(str(firstSubmitted)[17:19]))
-            delta = firstSubmittedDT-TCdateDT
-
-        else:
-            firstSubmittedDT = TCdateDT
-            delta = firstSubmittedDT-TCdateDT
-
-        #====================
-        #Copying older code from scraper:
-        #If the timecard day is a Friday or Saturday, we won't expect that the timecard will be submitted until the following Monday.
-        #let's write a function to check this, bc when i import "datetime from datetime" it throws the whole program off, bc i have datetime referenced in other places and at the top of the script i just imported datetime
-        def dayofweek(date):
-            from datetime import datetime
-            return date.weekday()
-
-        day = dayofweek(TCdateDT)
-
-        #Let's go ahead and define our time periods which will constitute late vs on time timecard submissions:
-        #Timecard cutoff is 10am the following date, so this will equate to exactly 34 hours after 12am on the previous day
-        timecardLate = datetime.timedelta(days=1, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
-
-
-        #If the day is Friday(4), then we will give them 3 days, 10 hours (until Monday morning at 10am) to submit their timecard
-        if day == 4:
-            timecardLate = datetime.timedelta(days=3, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
-
-        #If the day is Saturday(5), then we will give them 2 days, 10 hours (until Monday morning at 10am) to submit their timecard
-        if day == 5:
-            timecardLate = datetime.timedelta(days=2, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
-
-        #Finally, let's determine if the timecard is late or not:
-        if delta>timecardLate:
-            ontime = 'LATE'
-        else:
-            ontime = 'YES'
-
-        #====================
-        timecardInfoList.append([jobNum, jobDescription, employee, foremanCode, TCdate, firstSubmitted, str(delta), ontime, employeeCraft, timecardID, foremanAPIid, jobID, revision, lastModifiedDateTime, isApproved, lastChangedBy, lastPreparedBy, isReviewed, isAccepted, isRejected])
-
-
-    # return render_template('Paperwork - Timecard Tracking Summary.html', tcList=tcList, results=results, token=token)
- #If a 200 response code is not recieved, then that means there was an error.
-else:
-    #Returning the error code number and displaying on the webpage:
-    print(f"Failed to retrieve data from the HCSS API for timecards. Status code: {response.status_code}")
-
-    #Error Code Dictionary (info from: https://developer.hcssapps.com/getting-started/troubleshoot-bad-request/):
-    #   > Bad Request (HTTP 400): The most common reason for receiving a a Bad Request (HTTP 400) is sending invalid input.  (e.g., trying to create a cost code on a job that does not exist).
-    #   > Unauthorized (HTTP 401): The HCSS API returns Unauthorized (HTTP 401) if the authentication token is missing or expired. Most of the time, this error code is caused by a missing token.
-    #   > Forbidden (HTTP 403): The HCSS API returns Forbidden (HTTP 403) if an authorization token lacks the required scope.  APIs typically have at least two scopes: one providing read access, and one providing read+write.
-
-
-#==============================================================================================================================================================================================
-#Next, let's update our "Master_Timecard_Information" database:
-#============================================================================
-#Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                            
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                            
-truncate_table(supabase_url, supabase_key, 'Master_Timecard_Information')
-
-#============================================================================
-#Function to insert data into the "Cost_Code_Classifiers" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Timecard_Information').insert(data).execute()
-    return response
-
-#============================================================================
-#Inserting the data into our Supabase database table:
-rowcount = 1
-
-dataList = []
-
-for i in range(len(timecardInfoList)):
-    data_to_insert = {
-        'id':rowcount,
-        'jobCode':timecardInfoList[i][0],
-        'jobDescription':timecardInfoList[i][1],
-        'employeeName':timecardInfoList[i][2],
-        'employeeCode':timecardInfoList[i][3],
-        'timecardDate':timecardInfoList[i][4],
-        'firstSubmittedDate':timecardInfoList[i][5],
-        'timeDelta':timecardInfoList[i][6],
-        'onTime':timecardInfoList[i][7],
-        'employeeTrade':timecardInfoList[i][8],
-        'timecardID':timecardInfoList[i][9],
-        'employeeAPIid':timecardInfoList[i][10],
-        'jobID':timecardInfoList[i][11],
-        'revision':timecardInfoList[i][12],
-        'lastModifiedDT':timecardInfoList[i][13],
-        'isApproved':timecardInfoList[i][14],
-        'lastChangedBy':timecardInfoList[i][15],
-        'lastPrepedBy':timecardInfoList[i][16],
-        'isReviewed':timecardInfoList[i][17],
-        'isAccepted':timecardInfoList[i][18],
-        'isRejected':timecardInfoList[i][19]
-
+    #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
+    query = {
+            # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+            # "foremanId": APIID,
+            # "employeeId": APIID,
+            "startDate": "2021-01-01T00:00:00Z",
+            "endDate": endDate,
+            # "modifiedSince": "2019-08-24T14:15:22Z",
+            # "cursor": "string",
+            "limit": "1000"
     }
 
-    rowcount=rowcount+1
-
-    dataList.append(data_to_insert)
     #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
+    #Passing our token value generated above to our "HEADERS" variable:
+    HEADERS = {
+    "Authorization": "Bearer {}".format(token)
+    }
+
+    #============================================================================
+    #Finally, let's generate store our response which includes all of our raw data to a variable:
+    response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+
+    #============================================================================
+    #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+    if response.status_code == 200:
+        data = response.json()
+
+        #The data comes as a list with nested dictionaries format, with the data we want coming from the "results" index:
+        results = data.get('results')
+
+        timecardInfoList = []
+
+        for i in range(len(results)):
+            #Pulling our raw data from the API:
+            timecardID = results[i].get('id')
+            foremanAPIid = results[i].get('foreman').get('employeeId')
+            foremanCode = results[i].get('foreman').get('employeeCode')
+            employeeFN = results[i].get('foreman').get('employeeFirstName')
+            employeeLN = results[i].get('foreman').get('employeeLastName')
+            jobID = results[i].get('jobId')
+            businessUnitId = results[i].get('businessUnitId')
+            TCdate = results[i].get('date')
+            revision = results[i].get('revision')
+            shift = results[i].get('shift')
+            lastModifiedDateTime = results[i].get('lastModifiedDateTime')
+            isApproved = results[i].get('isApproved')
+            lastChangedBy = results[i].get('lastChangedByName')
+            lastPreparedBy = results[i].get('lastPreparedByName')
+            isReviewed = results[i].get('isReviewed')
+            isAccepted = results[i].get('isAccepted')
+            isRejected = results[i].get('isRejected')
+            firstSubmitted = results[i].get('lockedDateTime')
+
+            #Creating a variable for the full employee name
+            employee = str(employeeFN) + ' '+str(employeeLN)
+
+            #Using our dictionary created above to pull job name/num using the HCSS job ID:
+            #apiProjectNameDict[apiID]=[jobNum, jobDescription]
+            if jobID in apiProjectNameDict:
+                jobNum = apiProjectNameDict[jobID][0]
+                jobDescription = apiProjectNameDict[jobID][1]
+            else:
+                jobNum = 'None Found'
+                jobDescription = 'None Found'
+
+            #Using our dictionary created above to pull the employee trade from our employeeID:
+            #userCraftDict[employeeID]=employeeCraft
+            if foremanCode in userCraftDict:
+                employeeCraft = userCraftDict[foremanCode]
+            else:
+                employeeCraft = 'None'
+
+            #Converting the timecard date to datetime format:
+            import datetime
+
+            TCdateDT = datetime.datetime(int(str(TCdate)[0:4]),int(str(TCdate)[5:7]),int(str(TCdate)[8:10]), 0, 0, 0)
+
+            if firstSubmitted != None:
+                firstSubmittedDT = datetime.datetime(int(str(firstSubmitted)[0:4]),int(str(firstSubmitted)[5:7]),int(str(firstSubmitted)[8:10]),abs(int(str(firstSubmitted)[11:13])-5),int(str(firstSubmitted)[14:16]),int(str(firstSubmitted)[17:19]))
+                delta = firstSubmittedDT-TCdateDT
+
+            else:
+                firstSubmittedDT = TCdateDT
+                delta = firstSubmittedDT-TCdateDT
+
+            #====================
+            #Copying older code from scraper:
+            #If the timecard day is a Friday or Saturday, we won't expect that the timecard will be submitted until the following Monday.
+            #let's write a function to check this, bc when i import "datetime from datetime" it throws the whole program off, bc i have datetime referenced in other places and at the top of the script i just imported datetime
+            def dayofweek(date):
+                from datetime import datetime
+                return date.weekday()
+
+            day = dayofweek(TCdateDT)
+
+            #Let's go ahead and define our time periods which will constitute late vs on time timecard submissions:
+            #Timecard cutoff is 10am the following date, so this will equate to exactly 34 hours after 12am on the previous day
+            timecardLate = datetime.timedelta(days=1, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
 
 
+            #If the day is Friday(4), then we will give them 3 days, 10 hours (until Monday morning at 10am) to submit their timecard
+            if day == 4:
+                timecardLate = datetime.timedelta(days=3, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
+
+            #If the day is Saturday(5), then we will give them 2 days, 10 hours (until Monday morning at 10am) to submit their timecard
+            if day == 5:
+                timecardLate = datetime.timedelta(days=2, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=10, weeks=0)
+
+            #Finally, let's determine if the timecard is late or not:
+            if delta>timecardLate:
+                ontime = 'LATE'
+            else:
+                ontime = 'YES'
+
+            #====================
+            timecardInfoList.append([jobNum, jobDescription, employee, foremanCode, TCdate, firstSubmitted, str(delta), ontime, employeeCraft, timecardID, foremanAPIid, jobID, revision, lastModifiedDateTime, isApproved, lastChangedBy, lastPreparedBy, isReviewed, isAccepted, isRejected])
 
 
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+        # return render_template('Paperwork - Timecard Tracking Summary.html', tcList=tcList, results=results, token=token)
+    #If a 200 response code is not recieved, then that means there was an error.
+
+    #============================================================================
+    #If there wasn't a 200 code received, then there was an error and we will want to break this portion of the script and print out an error message:
+    else:
+        #=======================================
+        #Printing out our error message followed by some helpful notes on the response code:
+        print('HCSS API ERROR: {}'.format(response.status_code))
+        print('Response Code Text: {}'.format(response.text))
+        print('Request Error Code Notes:')
+        print('    > 400/Bad Request: The most common reason for receiving a a Bad Request (HTTP 400) is sending invalid input.  (e.g., trying to create a cost code on a job that does not exist).')
+        print('    > 401/Unauthorized: Most of the time, this error code is caused by a missing token. ')
+        print('    > 403/Forbidden: The HCSS API returns Forbidden (HTTP 403) if an authorization token lacks the required scope.  APIs typically have at least two scopes: one providing read access, and one providing read+write.')
+
+        #=======================================
+        #Using the "raise" method to throw off an error that will break the try/except statement that this script is running in. We don't want to delete the existing database data if we don't get data from our API!
+        raise ValueError("There was an error and no data was retrieved from the HCSS API!")
+
+    #endregion
 
 
+    #==============================================================================================================================================================================================
+    #Next, let's update our "Master_Timecard_Information" database:
+    #region
+
+    #============================================================================
+    #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
+    def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+                                
+        # Truncate the specified table
+        response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                
+    truncate_table(supabase_url, supabase_key, 'Master_Timecard_Information')
+
+    #============================================================================
+    #Function to insert data into the "Cost_Code_Classifiers" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Timecard_Information').insert(data).execute()
+        return response
+
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+    rowcount = 1
+
+    dataList = []
+
+    for i in range(len(timecardInfoList)):
+        data_to_insert = {
+            'id':rowcount,
+            'jobCode':timecardInfoList[i][0],
+            'jobDescription':timecardInfoList[i][1],
+            'employeeName':timecardInfoList[i][2],
+            'employeeCode':timecardInfoList[i][3],
+            'timecardDate':timecardInfoList[i][4],
+            'firstSubmittedDate':timecardInfoList[i][5],
+            'timeDelta':timecardInfoList[i][6],
+            'onTime':timecardInfoList[i][7],
+            'employeeTrade':timecardInfoList[i][8],
+            'timecardID':timecardInfoList[i][9],
+            'employeeAPIid':timecardInfoList[i][10],
+            'jobID':timecardInfoList[i][11],
+            'revision':timecardInfoList[i][12],
+            'lastModifiedDT':timecardInfoList[i][13],
+            'isApproved':timecardInfoList[i][14],
+            'lastChangedBy':timecardInfoList[i][15],
+            'lastPrepedBy':timecardInfoList[i][16],
+            'isReviewed':timecardInfoList[i][17],
+            'isAccepted':timecardInfoList[i][18],
+            'isRejected':timecardInfoList[i][19]
+
+        }
+
+        rowcount=rowcount+1
+
+        dataList.append(data_to_insert)
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = 'Failure to Update the "Master_Timecard_Information" Database in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master_Timecard_Information" database in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
@@ -1413,335 +1518,318 @@ print('<========================================================================
 print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and "Master_Equipment_GPS_Data" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
-#==============================================================================================================================================================================================
-#Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
-#region
-
-print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database...")
 start_time = time.time()
 
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-#=========================================================================================
-#Connecting to the telematics endpoint of the HCSS API and creating a list of values to be used in updating our "Equipment GPS All Data" database:
-HCSS_API_ENDPOINT = "https://api.hcssapps.com/telematics/api/v1/equipment"
+    #==============================================================================================================================================================================================
+    #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
+    #region
 
-#=========================================
-#Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
-query = {
-        # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-        # "foremanId": APIID,
-        # "employeeId": APIID,
-        #"startDate": "2021-01-01T00:00:00Z",
-        #"endDate": endDate
-        # "modifiedSince": "2019-08-24T14:15:22Z",
-        # "cursor": "string",
-        # "limit": "1000000"
-}
-
-#=========================================
-#Passing our token value generated above to our "HEADERS" variable:
-HEADERS = {
-"Authorization": "Bearer {}".format(token)
-}
-
-#=========================================
-#Finally, let's generate store our response which includes all of our raw data to a variable:
-response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
-
-#=========================================
-#Creating a dictionary of values that converts the equipment IDs shown in our telematics system to the standard IDs defined in our "Master Equipment List" smartsheet:
-
-MySheet = smart.Sheets.get_sheet('1336754816634756')
-
-telematicEquipIDconversionDict = {}
-
-for MyRow in MySheet.rows:
-    telematicEquipID = MyRow.cells[13].value
-    masterListEquipID = MyRow.cells[0].value
-
-    if telematicEquipID!=None:
-        telematicEquipIDconversionDict[telematicEquipID]=masterListEquipID
+    print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database...")
+    start_time = time.time()
 
 
-#=========================================
-#A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
-if response.status_code == 200:
-    data = response.json()
+    #============================================================================
+    #Connecting to the telematics endpoint of the HCSS API and creating a list of values to be used in updating our "Equipment GPS All Data" database:
+    HCSS_API_ENDPOINT = "https://api.hcssapps.com/telematics/api/v1/equipment"
 
-    results = data.get('results')
+    #============================================================================
+    #Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
+    query = {
+            # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+            # "foremanId": APIID,
+            # "employeeId": APIID,
+            #"startDate": "2021-01-01T00:00:00Z",
+            #"endDate": endDate
+            # "modifiedSince": "2019-08-24T14:15:22Z",
+            # "cursor": "string",
+            # "limit": "1000000"
+    }
 
-    equipmentInfoList = []
+    #============================================================================
+    #Passing our token value generated above to our "HEADERS" variable:
+    HEADERS = {
+    "Authorization": "Bearer {}".format(token)
+    }
 
-    for i in range(len(results)):
-        equipmentHCSSAPIid = results[i].get('id')
-        equipID = results[i].get('code')
-        equipDescription = results[i].get('description')
-        fuelUom = results[i].get('fuelUom')
-        lastBearing = results[i].get('lastBearing')
-        lastLatitude = results[i].get('lastLatitude')
-        lastLongitude = results[i].get('lastLongitude')
-        lastLocationDateTime = results[i].get('lastLocationDateTime')
-        lastHourMeterReadingInSeconds = results[i].get('lastHourMeterReadingInSeconds')
-        lastHourMeterReadingInHours = results[i].get('lastHourMeterReadingInHours')
-        lastHourReadingDateTime = results[i].get('lastHourMeterReadingDateTime')
-        lastEngineStatus = results[i].get('lastEngineStatus')
-        lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
-        
-        #===================
-        #For some dumb reason, when SS-08 got entered into telematics it had a space added at the end. Correcting here:
-        if equipID=='SS-08 ':
-            equipID='SS-08'
+    #============================================================================
+    #Finally, let's generate store our response which includes all of our raw data to a variable:
+    response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
 
-        #===================
-        #Converting equipment IDs to our standard formatting as is listed in the "Equipment Master List" smartsheet:
-        if equipID in telematicEquipIDconversionDict:
-            equipID=telematicEquipIDconversionDict[equipID]
+    #============================================================================
+    #Creating a dictionary of values that converts the equipment IDs shown in our telematics system to the standard IDs defined in our "Master Equipment List" smartsheet:
 
-        #===================
-        #Updating our list:
-        equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
 
+    telematicEquipIDconversionDict = {}
 
-#=========================================================================================
-#Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
-from datetime import datetime
-import pytz
+    for MyRow in MySheet.rows:
+        telematicEquipID = MyRow.cells[13].value
+        masterListEquipID = MyRow.cells[0].value
 
-def get_central_time():
-    central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
-    central_time = datetime.now(central_tz)  # Get current time in Central Time
-    return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
-
-todayCentral=str(get_central_time())[0:10]
-
-#=========================================================================================
-#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
-
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Equipment_GPS_All_Data")
-
-rowcount = len(data)+1
+        if telematicEquipID!=None:
+            telematicEquipIDconversionDict[telematicEquipID]=masterListEquipID
 
 
-#=========================================================================================
-#Function to insert data into the "Equipment_GPS_All_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Equipment_GPS_All_Data').insert(data).execute()
-    return response
+    #============================================================================
+    #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+    if response.status_code == 200:
+        data = response.json()
 
+        results = data.get('results')
 
-#=========================================================================================
-#Inserting the data into our Supabase database table:
-for i in range(len(equipmentInfoList)):
+        equipmentInfoList = []
 
-    #===========================================================
-    #Using our function defined at the top of this script to convert the "lastHourReadingDateTime" from our API data into a date that is in US central time:
-    if equipmentInfoList[i][10]!=None:
-        central_date = convert_utc_to_central(str(equipmentInfoList[i][10]))
-    else:
-        central_date = 'None'
+        for i in range(len(results)):
+            equipmentHCSSAPIid = results[i].get('id')
+            equipID = results[i].get('code')
+            equipDescription = results[i].get('description')
+            fuelUom = results[i].get('fuelUom')
+            lastBearing = results[i].get('lastBearing')
+            lastLatitude = results[i].get('lastLatitude')
+            lastLongitude = results[i].get('lastLongitude')
+            lastLocationDateTime = results[i].get('lastLocationDateTime')
+            lastHourMeterReadingInSeconds = results[i].get('lastHourMeterReadingInSeconds')
+            lastHourMeterReadingInHours = results[i].get('lastHourMeterReadingInHours')
+            lastHourReadingDateTime = results[i].get('lastHourMeterReadingDateTime')
+            lastEngineStatus = results[i].get('lastEngineStatus')
+            lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
+            
+            #===================
+            #For some dumb reason, when SS-08 got entered into telematics it had a space added at the end. Correcting here:
+            if equipID=='SS-08 ':
+                equipID='SS-08'
 
-    #===========================================================
-    #If our meter reading date is not for today, then we don't want to add it to our database! This API call returns the last GPS reading for EVERY SINGLE piece of equipment that we have ever owned!
-    if central_date==todayCentral:
-        #===========================================================
-        #Updating our dictionary:
-        data_to_insert = {
-            'id':rowcount,
-            'date':central_date,
-            'equipmentHCSSAPIid':equipmentInfoList[i][0],
-            'equipID':equipmentInfoList[i][1],
-            'equipDescription':equipmentInfoList[i][2],
-            'fuelUom':equipmentInfoList[i][3],
-            'lastBearing':equipmentInfoList[i][4],
-            'lastLatitude':equipmentInfoList[i][5],
-            'lastLongitude':equipmentInfoList[i][6],
-            'lastLocationDateTime':equipmentInfoList[i][7],
-            'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
-            'lastHourMeterReadingInHours':equipmentInfoList[i][9],
-            'lastHourReadingDateTime':equipmentInfoList[i][10],
-            'lastEngineStatus':equipmentInfoList[i][11],
-            'lastEngineStatusDateTime':equipmentInfoList[i][12]
-        }
+            #===================
+            #Converting equipment IDs to our standard formatting as is listed in the "Equipment Master List" smartsheet:
+            if equipID in telematicEquipIDconversionDict:
+                equipID=telematicEquipIDconversionDict[equipID]
 
-        rowcount=rowcount+1
-
-        #===========================================================
-        #Using the "insert_data" function defined at the top of this script
-        insert_response = insert_data(data_to_insert)
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-
-#endregion
-
-
-#==============================================================================================================================================================================================
-#Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
-#region
-
-print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today...")
-start_time = time.time()
-
-#=========================================================================================
-#Creating a variable for today's date:
-from datetime import datetime
-
-def get_current_datetime():
-    now = datetime.utcnow()
-    formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return formatted_datetime
-
-today = str(get_current_datetime())[0:10]
-
-#=========================================================================================
-#First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
-equipmentInfoTodayList = []
-
-#=========================================================================================
-#Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this date:
-# filters = {"column1": "value1", "column2": "value2"}
-# results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
-filters = {'date': todayCentral}
-data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
-
-#=========================================================================================
-#Iterating through our list of database values and updating our dictionary: 
-for i in range(len(data)):
-    entryEquipID = data[i][2]
-    equipDescr = data[i][3]
-
-    #Making sure to not add duplicate equipment IDs to our list: 
-    if [entryEquipID, equipDescr] not in equipmentInfoTodayList:
-        equipmentInfoTodayList.append([entryEquipID, equipDescr])
-
-
-#=========================================================================================
-#Accessing our project latitude/longitude coordinates by pulling from our "Master_Project_Information" table:
-projectData = fetch_data_from_table("Master_Project_Information")
-
-projectCoordinateDict = {}
-
-for j in range(len(projectData)):
-    jobStatus = projectData[j][4]
-
-    #We only want to update our dictionary for active projects
-    if jobStatus=='active':
-        jobNum = projectData[j][1]
-        jobDesc = projectData[j][2]
+            #===================
+            #Updating our list:
+            equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
     
-        if projectData[j][5]!='None':
-            lat = float(projectData[j][5])
+    #============================================================================
+    #If there wasn't a 200 code received, then there was an error and we will want to break this portion of the script and print out an error message:
+    else:
+        #=======================================
+        #Printing out our error message followed by some helpful notes on the response code:
+        print('HCSS API ERROR: {}'.format(response.status_code))
+        print('Response Code Text: {}'.format(response.text))
+        print('Request Error Code Notes:')
+        print('    > 400/Bad Request: The most common reason for receiving a a Bad Request (HTTP 400) is sending invalid input.  (e.g., trying to create a cost code on a job that does not exist).')
+        print('    > 401/Unauthorized: Most of the time, this error code is caused by a missing token. ')
+        print('    > 403/Forbidden: The HCSS API returns Forbidden (HTTP 403) if an authorization token lacks the required scope.  APIs typically have at least two scopes: one providing read access, and one providing read+write.')
+
+        #=======================================
+        #Using the "raise" method to throw off an error that will break the try/except statement that this script is running in. We don't want to delete the existing database data if we don't get data from our API!
+        raise ValueError("There was an error and no data was retrieved from the HCSS API!")
+    
+    #============================================================================
+    #Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
+    from datetime import datetime
+    import pytz
+
+    def get_central_time():
+        central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
+        central_time = datetime.now(central_tz)  # Get current time in Central Time
+        return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
+
+    todayCentral=str(get_central_time())[0:10]
+
+    #============================================================================
+    #Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Equipment_GPS_All_Data")
+
+    rowcount = len(data)+1
+
+
+    #============================================================================
+    #Function to insert data into the "Equipment_GPS_All_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Equipment_GPS_All_Data').insert(data).execute()
+        return response
+
+
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+    for i in range(len(equipmentInfoList)):
+
+        #===========================================================
+        #Using our function defined at the top of this script to convert the "lastHourReadingDateTime" from our API data into a date that is in US central time:
+        if equipmentInfoList[i][10]!=None:
+            central_date = convert_utc_to_central(str(equipmentInfoList[i][10]))
         else:
-            lat = 0
-        if projectData[j][6]!='None':
-            long = float(projectData[j][6])
-        else:
-            long = 0
+            central_date = 'None'
 
-        if projectData[j][18]!=None:
-            jobRadius = float(projectData[j][18])
-        else:
-            jobRadius = 0
+        #===========================================================
+        #If our meter reading date is not for today, then we don't want to add it to our database! This API call returns the last GPS reading for EVERY SINGLE piece of equipment that we have ever owned!
+        if central_date==todayCentral:
+            #===========================================================
+            #Updating our dictionary:
+            data_to_insert = {
+                'id':rowcount,
+                'date':central_date,
+                'equipmentHCSSAPIid':equipmentInfoList[i][0],
+                'equipID':equipmentInfoList[i][1],
+                'equipDescription':equipmentInfoList[i][2],
+                'fuelUom':equipmentInfoList[i][3],
+                'lastBearing':equipmentInfoList[i][4],
+                'lastLatitude':equipmentInfoList[i][5],
+                'lastLongitude':equipmentInfoList[i][6],
+                'lastLocationDateTime':equipmentInfoList[i][7],
+                'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
+                'lastHourMeterReadingInHours':equipmentInfoList[i][9],
+                'lastHourReadingDateTime':equipmentInfoList[i][10],
+                'lastEngineStatus':equipmentInfoList[i][11],
+                'lastEngineStatusDateTime':equipmentInfoList[i][12]
+            }
 
-        #Calculating our lat/long max/min ranges using our function defined above: 
-        coordinateMaxMins = get_lat_lng_bounds(lat, long, jobRadius) #Using our "get_lat_lng_bounds" function defined at the top of this script
-        min_lat = coordinateMaxMins.get('min_lat')
-        max_lat = coordinateMaxMins.get('max_lat')
-        min_lng = coordinateMaxMins.get('min_lng')
-        max_lng = coordinateMaxMins.get('max_lng')
+            rowcount=rowcount+1
 
-        projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
+            #===========================================================
+            #Using the "insert_data" function defined at the top of this script
+            insert_response = insert_data(data_to_insert)
 
 
-#=========================================================================================
-#Next, let's iterate through our list created above and calculate the total hours and location for each:
-equipmentInfoDictionary = {}
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
-for i in range(len(equipmentInfoTodayList)):
-    entryEquipID = equipmentInfoTodayList[i][0]
-    equipDescript = equipmentInfoTodayList[i][1]
+    #endregion
 
-    #=========================================
-    #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+
+    #==============================================================================================================================================================================================
+    #Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
+    #region
+
+    print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today...")
+    start_time = time.time()
+
+    #=========================================================================================
+    #Creating a variable for today's date:
+    from datetime import datetime
+
+    def get_current_datetime():
+        now = datetime.utcnow()
+        formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return formatted_datetime
+
+    today = str(get_current_datetime())[0:10]
+
+    #=========================================================================================
+    #First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
+    equipmentInfoTodayList = []
+
+    #=========================================================================================
+    #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this date:
     # filters = {"column1": "value1", "column2": "value2"}
     # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
-    filters = {"equipID": entryEquipID, 'date': todayCentral}
-    results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+    filters = {'date': todayCentral}
+    data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
-    #=========================================
-    #Iterating through our list of values from our database and determining the highest/lowest hour readings to calculate our total hours for this date/equipment:
-    lowestHourReading = 5000000 #Putting this as an absurdly high number so that the first hour reading becomes the lowest
-    highestHourReading = 0
-    locationList = []
+    #=========================================================================================
+    #Iterating through our list of database values and updating our dictionary: 
+    for i in range(len(data)):
+        entryEquipID = data[i][2]
+        equipDescr = data[i][3]
 
-    for j in range(len(results)):
-        #Calculating the min/max hour readings:
-        if results[j][10]!=None:
-            entryHourReading = float(results[j][10])
-        else:
-            entryHourReading = 0
-
-        if entryHourReading>highestHourReading:
-            highestHourReading=entryHourReading
-        if entryHourReading<lowestHourReading:
-            lowestHourReading=entryHourReading
-
-        #Updating our location GPS coordinate list for this equipment/date:
-        thisLat = results[j][6]
-        thisLong = results[j][7]
-
-        locationList.append([thisLat, thisLong])
-    
-    #=========================================
-    #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
-    totalEquipHours = highestHourReading-lowestHourReading
+        #Making sure to not add duplicate equipment IDs to our list: 
+        if [entryEquipID, equipDescr] not in equipmentInfoTodayList:
+            equipmentInfoTodayList.append([entryEquipID, equipDescr])
 
 
-    #=========================================
-    #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
-    equipmentProjectList = []
+    #=========================================================================================
+    #Accessing our project latitude/longitude coordinates by pulling from our "Master_Project_Information" table:
+    projectData = fetch_data_from_table("Master_Project_Information")
 
-    for j in range(len(locationList)):
-        if locationList[j][0]!=None and locationList[j][1]!=None:
-            entryLat = float(locationList[j][0])
-            entryLong = float(locationList[j][1])
-        else:
-            entryLat = 0
-            entryLong = 0
+    projectCoordinateDict = {}
 
-        #projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
-        for key,values in projectCoordinateDict.items():
-            thisJobNum = key[0]
-            thisJobDesc = key[1]
-            thisJobValue = thisJobNum+'-'+thisJobDesc
+    for j in range(len(projectData)):
+        jobStatus = projectData[j][4]
 
-            min_lat = values[0]
-            max_lat = values[1]
-            min_lng = values[2]
-            max_lng = values[3]
+        #We only want to update our dictionary for active projects
+        if jobStatus=='active':
+            jobNum = projectData[j][1]
+            jobDesc = projectData[j][2]
+        
+            if projectData[j][5]!='None':
+                lat = float(projectData[j][5])
+            else:
+                lat = 0
+            if projectData[j][6]!='None':
+                long = float(projectData[j][6])
+            else:
+                long = 0
 
-            #If the longitude/latitude are within the ranges of this project, then we will add to our list:
-            if entryLat>=min_lat and entryLat<=max_lat:
-                if entryLong>=min_lng and entryLong<=max_lng:
-                    equipmentProjectList.append(thisJobValue)
+            if projectData[j][18]!=None:
+                jobRadius = float(projectData[j][18])
+            else:
+                jobRadius = 0
 
-    
-    
-    #=========================================
-    #Using our "most_frequent" function defined at the top of this script to pull the most frequently occuring project from our "equipmentProjectList":
-    project = most_frequent(equipmentProjectList)
+            #Calculating our lat/long max/min ranges using our function defined above: 
+            coordinateMaxMins = get_lat_lng_bounds(lat, long, jobRadius) #Using our "get_lat_lng_bounds" function defined at the top of this script
+            min_lat = coordinateMaxMins.get('min_lat')
+            max_lat = coordinateMaxMins.get('max_lat')
+            min_lng = coordinateMaxMins.get('min_lng')
+            max_lng = coordinateMaxMins.get('max_lng')
+
+            projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
 
 
-    #=========================================
-    #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
-    if project==None:
-        #Creating a list of all addresses
-        addressList = []
+    #=========================================================================================
+    #Next, let's iterate through our list created above and calculate the total hours and location for each:
+    equipmentInfoDictionary = {}
+
+    for i in range(len(equipmentInfoTodayList)):
+        entryEquipID = equipmentInfoTodayList[i][0]
+        equipDescript = equipmentInfoTodayList[i][1]
+
+        #=========================================
+        #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
+        # filters = {"column1": "value1", "column2": "value2"}
+        # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+        filters = {"equipID": entryEquipID, 'date': todayCentral}
+        results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+        #=========================================
+        #Iterating through our list of values from our database and determining the highest/lowest hour readings to calculate our total hours for this date/equipment:
+        lowestHourReading = 5000000 #Putting this as an absurdly high number so that the first hour reading becomes the lowest
+        highestHourReading = 0
+        locationList = []
+
+        for j in range(len(results)):
+            #Calculating the min/max hour readings:
+            if results[j][10]!=None:
+                entryHourReading = float(results[j][10])
+            else:
+                entryHourReading = 0
+
+            if entryHourReading>highestHourReading:
+                highestHourReading=entryHourReading
+            if entryHourReading<lowestHourReading:
+                lowestHourReading=entryHourReading
+
+            #Updating our location GPS coordinate list for this equipment/date:
+            thisLat = results[j][6]
+            thisLong = results[j][7]
+
+            locationList.append([thisLat, thisLong])
+        
+        #=========================================
+        #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
+        totalEquipHours = highestHourReading-lowestHourReading
+
+
+        #=========================================
+        #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
+        equipmentProjectList = []
 
         for j in range(len(locationList)):
             if locationList[j][0]!=None and locationList[j][1]!=None:
@@ -1751,96 +1839,148 @@ for i in range(len(equipmentInfoTodayList)):
                 entryLat = 0
                 entryLong = 0
 
-            address = get_address_from_coordinates(entryLat, entryLong) #using  our "get_address_from_coordinates" function defined at the top of this script
-            
-            #Adding our GPS coordinates to our address for reference in other scripts:
-            address=address+' ('+str(entryLat)+', '+str(entryLong)+')'
+            #projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
+            for key,values in projectCoordinateDict.items():
+                thisJobNum = key[0]
+                thisJobDesc = key[1]
+                thisJobValue = thisJobNum+'-'+thisJobDesc
 
-            #Updating our address list:
-            addressList.append(address)
+                min_lat = values[0]
+                max_lat = values[1]
+                min_lng = values[2]
+                max_lng = values[3]
 
-        #Definng our project variable as the most common address found in our address list:
-        project = most_frequent(addressList)
-        project = 'OUTSIDE OF GEOFENCES! GPS Coordinate Address: '+str(project)
+                #If the longitude/latitude are within the ranges of this project, then we will add to our list:
+                if entryLat>=min_lat and entryLat<=max_lat:
+                    if entryLong>=min_lng and entryLong<=max_lng:
+                        equipmentProjectList.append(thisJobValue)
 
-
-    #=========================================
-    #Updating our dictionary of values to be entered into our database:
-    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-#endregion
+        
+        
+        #=========================================
+        #Using our "most_frequent" function defined at the top of this script to pull the most frequently occuring project from our "equipmentProjectList":
+        project = most_frequent(equipmentProjectList)
 
 
-#==============================================================================================================================================================================================
-#Next, let's enter the values above into our "Master Equipment GPS Data" database
-#region
+        #=========================================
+        #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
+        if project==None:
+            #Creating a list of all addresses
+            addressList = []
 
-print("Next, let's enter the values above into our Master Equipment GPS Data database...")
-start_time = time.time()
+            for j in range(len(locationList)):
+                if locationList[j][0]!=None and locationList[j][1]!=None:
+                    entryLat = float(locationList[j][0])
+                    entryLong = float(locationList[j][1])
+                else:
+                    entryLat = 0
+                    entryLong = 0
 
-#============================================================================
-#First, let's delete any rows in this table that are for our current date
-result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
-#print(result)
+                address = get_address_from_coordinates(entryLat, entryLong) #using  our "get_address_from_coordinates" function defined at the top of this script
+                
+                #Adding our GPS coordinates to our address for reference in other scripts:
+                address=address+' ('+str(entryLat)+', '+str(entryLong)+')'
+
+                #Updating our address list:
+                addressList.append(address)
+
+            #Definng our project variable as the most common address found in our address list:
+            project = most_frequent(addressList)
+            project = 'OUTSIDE OF GEOFENCES! GPS Coordinate Address: '+str(project)
 
 
-#============================================================================
-#Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
-
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Equipment_GPS_Data")
-
-rowcount = len(data)+1
+        #=========================================
+        #Updating our dictionary of values to be entered into our database:
+        equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
 
 
-#============================================================================
-#Function to insert data into the "Master_Equipment_GPS_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Equipment_GPS_Data').insert(data).execute()
-    return response
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #endregion
 
-#============================================================================
-#Iterating through our dictionary items created above: 
-for key,values in equipmentInfoDictionary.items():
-    equipID = key[0]
-    equipDesc = key[2]
-    todayDate = key[1]
-    totalEquipHours = values[0]
-    projectLocation = values[1]
 
+    #==============================================================================================================================================================================================
+    #Next, let's enter the values above into our "Master Equipment GPS Data" database
+    #region
+
+    print("Next, let's enter the values above into our Master Equipment GPS Data database...")
+    start_time = time.time()
+
+    #============================================================================
+    #First, let's delete any rows in this table that are for our current date
+    result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
+    #print(result)
+
+
+    #============================================================================
+    #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
+
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Master_Equipment_GPS_Data")
+
+    rowcount = len(data)+1
+
+
+    #============================================================================
+    #Function to insert data into the "Master_Equipment_GPS_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Equipment_GPS_Data').insert(data).execute()
+        return response
+
+    #============================================================================
+    #Iterating through our dictionary items created above: 
+    for key,values in equipmentInfoDictionary.items():
+        equipID = key[0]
+        equipDesc = key[2]
+        todayDate = key[1]
+        totalEquipHours = values[0]
+        projectLocation = values[1]
+
+        
+        #============================================================================
+        #Inserting the data into our Supabase database table:
+        data_to_insert = {
+            'id':rowcount,
+            'date':todayCentral,
+            'equipID':equipID,
+            'equipDesc':equipDesc,
+            'totalGPShours':totalEquipHours,
+            'primaryLocation':projectLocation
+
+        }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = 'Failure to Update the "Equipment_GPS_All_Data" Database and "Master_Equipment_GPS_Data" in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Equipment_GPS_All_Data" database table and "Master_Equipment_GPS_Data" database table in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
     
-    #============================================================================
-    #Inserting the data into our Supabase database table:
-    data_to_insert = {
-        'id':rowcount,
-        'date':todayCentral,
-        'equipID':equipID,
-        'equipDesc':equipDesc,
-        'totalGPShours':totalEquipHours,
-        'primaryLocation':projectLocation
-
-    }
-
-    rowcount=rowcount+1
-
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-#endregion
-
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
@@ -1855,7 +1995,7 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 
 start_time = time.time()
 
-
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
 try:
 
     #==============================================================================================================================================================================================
@@ -2225,6 +2365,7 @@ try:
     elapsed_time = end_time - start_time
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
 except:
     recipient = 'collin@ddmcc.net'
     subject = '"Master_Equipment_Timecard_Data" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
@@ -2245,399 +2386,408 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 
 start_time = time.time()
 
-#===============================================================================================================================================================
-#First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
-#region
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-print('Creating a list of dates that we want to create our report for...')
+    #===============================================================================================================================================================
+    #First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
+    #region
 
-from datetime import datetime, timedelta
-import pytz
+    print('Creating a list of dates that we want to create our report for...')
 
-# Define US Central Time timezone
-central_tz = pytz.timezone('America/Chicago')
+    from datetime import datetime, timedelta
+    import pytz
 
-# Get current date in US Central Time
-current_date = datetime.now(central_tz).date()
+    # Define US Central Time timezone
+    central_tz = pytz.timezone('America/Chicago')
 
-# Generate list of dates for the past 14 days (including today)
-dates = [(current_date - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
+    # Get current date in US Central Time
+    current_date = datetime.now(central_tz).date()
 
-print('SUCCESS')
+    # Generate list of dates for the past 14 days (including today)
+    dates = [(current_date - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
 
-#endregion
+    print('SUCCESS')
 
-
-#===============================================================================================================================================================
-#Next, let's create a list of all GPS data for each piece of equipment/date included in this week:
-#region
+    #endregion
 
 
-#==================================================================================
-#First, let's write a function that returns the day of the week when given a date. We only want to charge equipment with a charge type of 8HRS/DAY on weekdays:
-from datetime import datetime
-
-def get_weekday_number(date_str: str) -> int:
-    """
-    Takes a date string in "YYYY-MM-DD" format and returns the day of the week as a number.
-    Monday = 0, Sunday = 6.
-    
-    :param date_str: Date string in "YYYY-MM-DD" format.
-    :return: Integer representing the day of the week (0 = Monday, 6 = Sunday).
-    """
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    return date_obj.weekday()
-
-# Example usage
-#print(get_weekday_number("2025-02-14"))  # Output: 4 (Friday)
+    #===============================================================================================================================================================
+    #Next, let's create a list of all GPS data for each piece of equipment/date included in this week:
+    #region
 
 
-#==================================================================================
-#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
+    #==================================================================================
+    #First, let's write a function that returns the day of the week when given a date. We only want to charge equipment with a charge type of 8HRS/DAY on weekdays:
+    from datetime import datetime
 
-#============================================
-#Adding equipment from our main asset list:
-MySheet = smart.Sheets.get_sheet('1336754816634756')
-
-chargeTypeDictionary = {}
-statusDictionary = {}
-
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[12].value
-
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
-
-
-#============================================
-#Adding equipemtn from our fleet list:
-MySheet = smart.Sheets.get_sheet('601782195539844')
-
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[7].value
-
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
-
-
-#==================================================================================
-#Next, create a list of fleet AND asset equipment that is charged at 8 hours that will be used to filter these results from our GPS data:
-gpsDataList = []
-idCheckList = [] #Will be used to check if an equipment ID is already in our list to filter from GPS entries:
-
-for i in range(len(dates)):
-    entryDate = dates[i]
-    weekdayNumber = get_weekday_number(entryDate)
-
-    
-    #We only want to include PTs if it is MON-FRI:
-    if weekdayNumber in [0, 1, 2, 3, 4]:
-        #============================================
-        #First, let's add in our smartsheet fleet assets:
-        MySheet = smart.Sheets.get_sheet('601782195539844')
-
-        smartSheetFleetInfoList = []
-
-        for MyRow in MySheet.rows:
-            #We only want to pull PTs from the fleeet list, so let's only add to the list if the charge type is 8HR/DAY AND the equipment is active:
-            chargeType = MyRow.cells[11].value
-            status = MyRow.cells[12].value
-
-            if chargeType=='8HR/DAY' and status=='Active':
-                fleetID = MyRow.cells[0].value
-                fleetDescription = MyRow.cells[2].value
-                assignedTo = MyRow.cells[8].value
-                    
-                #Rather than displaying the PT's location, we want to display who the PT is assigned to:
-                locationValue = 'PT Assigned To: '+assignedTo
-
-                #Updating our list:
-                gpsDataList.append([entryDate, fleetID, fleetDescription, 8, locationValue])
-
-                #Updating our check list:
-                idCheckList.append(fleetID)
+    def get_weekday_number(date_str: str) -> int:
+        """
+        Takes a date string in "YYYY-MM-DD" format and returns the day of the week as a number.
+        Monday = 0, Sunday = 6.
         
+        :param date_str: Date string in "YYYY-MM-DD" format.
+        :return: Integer representing the day of the week (0 = Monday, 6 = Sunday).
+        """
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        return date_obj.weekday()
+
+    # Example usage
+    #print(get_weekday_number("2025-02-14"))  # Output: 4 (Friday)
+
+
+    #==================================================================================
+    #Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
+
+    #============================================
+    #Adding equipment from our main asset list:
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+    chargeTypeDictionary = {}
+    statusDictionary = {}
+
+    for MyRow in MySheet.rows: 
+        entryEquipID = MyRow.cells[0].value
+        chargeType = MyRow.cells[11].value
+        entryStatus = MyRow.cells[12].value
+
+        chargeTypeDictionary[entryEquipID]=chargeType
+        statusDictionary[entryEquipID]=entryStatus
+
+
+    #============================================
+    #Adding equipemtn from our fleet list:
+    MySheet = smart.Sheets.get_sheet('601782195539844')
+
+    for MyRow in MySheet.rows: 
+        entryEquipID = MyRow.cells[0].value
+        chargeType = MyRow.cells[11].value
+        entryStatus = MyRow.cells[7].value
+
+        chargeTypeDictionary[entryEquipID]=chargeType
+        statusDictionary[entryEquipID]=entryStatus
+
+
+    #==================================================================================
+    #Next, create a list of fleet AND asset equipment that is charged at 8 hours that will be used to filter these results from our GPS data:
+    gpsDataList = []
+    idCheckList = [] #Will be used to check if an equipment ID is already in our list to filter from GPS entries:
+
+    for i in range(len(dates)):
+        entryDate = dates[i]
+        weekdayNumber = get_weekday_number(entryDate)
+
+        
+        #We only want to include PTs if it is MON-FRI:
+        if weekdayNumber in [0, 1, 2, 3, 4]:
+            #============================================
+            #First, let's add in our smartsheet fleet assets:
+            MySheet = smart.Sheets.get_sheet('601782195539844')
+
+            smartSheetFleetInfoList = []
+
+            for MyRow in MySheet.rows:
+                #We only want to pull PTs from the fleeet list, so let's only add to the list if the charge type is 8HR/DAY AND the equipment is active:
+                chargeType = MyRow.cells[11].value
+                status = MyRow.cells[12].value
+
+                if chargeType=='8HR/DAY' and status=='Active':
+                    fleetID = MyRow.cells[0].value
+                    fleetDescription = MyRow.cells[2].value
+                    assignedTo = MyRow.cells[8].value
+                        
+                    #Rather than displaying the PT's location, we want to display who the PT is assigned to:
+                    locationValue = 'PT Assigned To: '+assignedTo
+
+                    #Updating our list:
+                    gpsDataList.append([entryDate, fleetID, fleetDescription, 8, locationValue])
+
+                    #Updating our check list:
+                    idCheckList.append(fleetID)
+            
+            #============================================
+            #Next, let's add in our equipment assets:
+            filters = {'date': entryDate}
+            data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
+
+            for j in range(len(data)):
+                entryEquipID = data[j][2]
+                entryEquipDescription = data[j][3]
+                entryGPShours = data[j][4]
+                primaryLocation = data[j][5]
+
+                #Pulling the charge type and status using our dictionaries created above:
+                thisChargeType = chargeTypeDictionary[entryEquipID]
+                thisStatus = statusDictionary[entryEquipID]
+
+                #If this is an 8HR/DAY charge type and has an acitve status then we want to update our lists:
+                if thisChargeType=='8HR/DAY' and thisStatus=='Active':
+                    gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, 8, primaryLocation])
+
+                    idCheckList.append(entryEquipID)
+
+
+    #==================================================================================
+    #Next, create a list of values that includes GPS hours for ALL equipment we want to see our on our report:
+    print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
+
+    for i in range(len(dates)):
+        entryDate = dates[i]
+        weekdayNumber = get_weekday_number(entryDate)
+
         #============================================
-        #Next, let's add in our equipment assets:
+        #First, let's pull all of our gps data and add it to a list: 
         filters = {'date': entryDate}
         data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
 
         for j in range(len(data)):
             entryEquipID = data[j][2]
-            entryEquipDescription = data[j][3]
-            entryGPShours = data[j][4]
-            primaryLocation = data[j][5]
 
-            #Pulling the charge type and status using our dictionaries created above:
-            thisChargeType = chargeTypeDictionary[entryEquipID]
-            thisStatus = statusDictionary[entryEquipID]
+            #Important! To prevent duplicate entries for any assets with an "8HR/DAY" charge type filter them out here using your "idChecklist" created in the previous step:
+            if entryEquipID not in idCheckList:
+                entryEquipDescription = data[j][3]
+                entryGPShours = data[j][4]
+                primaryLocation = data[j][5]
 
-            #If this is an 8HR/DAY charge type and has an acitve status then we want to update our lists:
-            if thisChargeType=='8HR/DAY' and thisStatus=='Active':
-                gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, 8, primaryLocation])
-
-                idCheckList.append(entryEquipID)
+                gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
 
 
-#==================================================================================
-#Next, create a list of values that includes GPS hours for ALL equipment we want to see our on our report:
-print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
-
-for i in range(len(dates)):
-    entryDate = dates[i]
-    weekdayNumber = get_weekday_number(entryDate)
-
-    #============================================
-    #First, let's pull all of our gps data and add it to a list: 
-    filters = {'date': entryDate}
-    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
-
-    for j in range(len(data)):
-        entryEquipID = data[j][2]
-
-        #Important! To prevent duplicate entries for any assets with an "8HR/DAY" charge type filter them out here using your "idChecklist" created in the previous step:
-        if entryEquipID not in idCheckList:
-            entryEquipDescription = data[j][3]
-            entryGPShours = data[j][4]
-            primaryLocation = data[j][5]
-
-            gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
+        
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 
-    
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #endregion
 
 
-#endregion
+    #===============================================================================================================================================================
+    #Next, let's iterate through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list:
+    #region
 
 
-#===============================================================================================================================================================
-#Next, let's iterate through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list:
-#region
-
-
-#==================================================================================
-#First, let's build a project/project manager dictionary using our Project Info smartsheet!
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('3259554229866372')
-
-projectManagerDictionary = {}
-projectManagerCityDictionary = {} #Let's also create a dictionary that stores the city/project manager if there isn't a project identified by our GPS data
-
-for MyRow in MySheet.rows:
-    #========================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    jobNum = MyRow.cells[2].value
-    projectManager = MyRow.cells[13].value
-    city = MyRow.cells[10].value
-    
-
-    #========================================
-    #Updating our dictionary tieing project numbers to project managers:
-    projectManagerDictionary[jobNum]=projectManager
-
-    #========================================
-    #Updating our dictionary tieing cities to project managers:
-    if city in projectManagerCityDictionary:
-        projectManagerCityDictionary[city]=projectManagerCityDictionary[city]+' OR '+projectManagerCityDictionary[city]
-    else:
-        projectManagerCityDictionary[city]=projectManager
-
-
-#==================================================================================
-#Next, let's iterate through our list of values from our GPS, perform our calcs, and update our list:
-equipmentUtilizationList = []
-
-for i in range(len(gpsDataList)):
     #==================================================================================
-    #Defining our initial variables:
-    entryDate = gpsDataList[i][0]
-    entryEquipID = gpsDataList[i][1]
-    entryEquipDescription = gpsDataList[i][2]
-    entryGPShours = gpsDataList[i][3]
-    primaryLocation = gpsDataList[i][4]
-    if primaryLocation!=None:
-        jobNum = primaryLocation[0:5]
-    else:
-        jobNum = ''
-    
-    #========================================
-    #Converting our gps hour variable to a floating point number: 
-    if entryGPShours==None:
-            entryGPShours=0
-    else:
-        entryGPShours=float(entryGPShours)
+    #First, let's build a project/project manager dictionary using our Project Info smartsheet!
+    #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
+    MySheet = smart.Sheets.get_sheet('3259554229866372')
+
+    projectManagerDictionary = {}
+    projectManagerCityDictionary = {} #Let's also create a dictionary that stores the city/project manager if there isn't a project identified by our GPS data
+
+    for MyRow in MySheet.rows:
+        #========================================
+        #Defining some initial values that will be pulled straight from the smartsheet: 
+        jobNum = MyRow.cells[2].value
+        projectManager = MyRow.cells[13].value
+        city = MyRow.cells[10].value
+        
+
+        #========================================
+        #Updating our dictionary tieing project numbers to project managers:
+        projectManagerDictionary[jobNum]=projectManager
+
+        #========================================
+        #Updating our dictionary tieing cities to project managers:
+        if city in projectManagerCityDictionary:
+            projectManagerCityDictionary[city]=projectManagerCityDictionary[city]+' OR '+projectManagerCityDictionary[city]
+        else:
+            projectManagerCityDictionary[city]=projectManager
 
 
-    #========================================
-    #Using our "chargeTypeDictionary" created above to assign a charge type:
-    #chargeTypeDictionary[entryEquipID]=chargeType
-    if entryEquipID in chargeTypeDictionary:
-        entryChargeType = chargeTypeDictionary[entryEquipID]
-    else:
-        entryChargeType = ''
+    #==================================================================================
+    #Next, let's iterate through our list of values from our GPS, perform our calcs, and update our list:
+    equipmentUtilizationList = []
 
-    #========================================
-    #If our charge type is "8HR/DAY", then we will want to change the equipment GPS hours to be 8:
-    if entryChargeType=="8HR/DAY":
-        entryGPShours=8
+    for i in range(len(gpsDataList)):
+        #==================================================================================
+        #Defining our initial variables:
+        entryDate = gpsDataList[i][0]
+        entryEquipID = gpsDataList[i][1]
+        entryEquipDescription = gpsDataList[i][2]
+        entryGPShours = gpsDataList[i][3]
+        primaryLocation = gpsDataList[i][4]
+        if primaryLocation!=None:
+            jobNum = primaryLocation[0:5]
+        else:
+            jobNum = ''
+        
+        #========================================
+        #Converting our gps hour variable to a floating point number: 
+        if entryGPShours==None:
+                entryGPShours=0
+        else:
+            entryGPShours=float(entryGPShours)
 
-    #========================================
-    #IMPORTANT! WE ONLY WANT TO INCLUDE ENTRIES IN OUR REPORT IF THEY HAVE GREATER THAN 0.5 HOURS OF GPS TIME && THEY DON'T HAVE A "None" CHARGE TYPE!
-    if entryChargeType!='None':
-        if entryGPShours>=0.5:
 
-            #========================================
-            #Using our dictionaries created above to define a variable for our project manager:
-            if jobNum in projectManagerDictionary:
-                projectManager=projectManagerDictionary[jobNum]
-            elif jobNum=='OUTSI':
-                city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
-                if city in projectManagerCityDictionary:
-                    projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
+        #========================================
+        #Using our "chargeTypeDictionary" created above to assign a charge type:
+        #chargeTypeDictionary[entryEquipID]=chargeType
+        if entryEquipID in chargeTypeDictionary:
+            entryChargeType = chargeTypeDictionary[entryEquipID]
+        else:
+            entryChargeType = ''
+
+        #========================================
+        #If our charge type is "8HR/DAY", then we will want to change the equipment GPS hours to be 8:
+        if entryChargeType=="8HR/DAY":
+            entryGPShours=8
+
+        #========================================
+        #IMPORTANT! WE ONLY WANT TO INCLUDE ENTRIES IN OUR REPORT IF THEY HAVE GREATER THAN 0.5 HOURS OF GPS TIME && THEY DON'T HAVE A "None" CHARGE TYPE!
+        if entryChargeType!='None':
+            if entryGPShours>=0.5:
+
+                #========================================
+                #Using our dictionaries created above to define a variable for our project manager:
+                if jobNum in projectManagerDictionary:
+                    projectManager=projectManagerDictionary[jobNum]
+                elif jobNum=='OUTSI':
+                    city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
+                    if city in projectManagerCityDictionary:
+                        projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
+                    else:
+                        projectManager='No PMs currently assigned to projects in this city'
                 else:
-                    projectManager='No PMs currently assigned to projects in this city'
-            else:
-                projectManager='No PM Found'
+                    projectManager='No PM Found'
 
-            #If our equipment is an HT or DT, then we will want to assign Derek as the project manager due to the fact that these always move around!
-            if entryEquipID[0:2]=='HT' or entryEquipID[0:2]=='DT':
-                projectManager='Derek Dodson (Assigned to All HT/DT Equipment)'
+                #If our equipment is an HT or DT, then we will want to assign Derek as the project manager due to the fact that these always move around!
+                if entryEquipID[0:2]=='HT' or entryEquipID[0:2]=='DT':
+                    projectManager='Derek Dodson (Assigned to All HT/DT Equipment)'
 
-            #==================================================================================
-            #Pulling our Heavy Job equipment info for this date/equipment:
-            filters = {'date': entryDate, 'equipmentCode': entryEquipID}
-            data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", filters)
+                #==================================================================================
+                #Pulling our Heavy Job equipment info for this date/equipment:
+                filters = {'date': entryDate, 'equipmentCode': entryEquipID}
+                data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", filters)
 
-            #==================================================================================
-            #Iterating through our heavy job data, calculating the difference from the GPS data, and updating our list:
+                #==================================================================================
+                #Iterating through our heavy job data, calculating the difference from the GPS data, and updating our list:
 
-            #=======================================
-            #If our database query returns a blank list, that means that there is no entry for this equipment in heavy job and we will want to set the hours equal to zero:
-            if data==[]:
-                heavyJobHours = 0
+                #=======================================
+                #If our database query returns a blank list, that means that there is no entry for this equipment in heavy job and we will want to set the hours equal to zero:
+                if data==[]:
+                    heavyJobHours = 0
 
-                #Calculating our hour delta:
-                hourDelta = round(entryGPShours-heavyJobHours,2)
+                    #Calculating our hour delta:
+                    hourDelta = round(entryGPShours-heavyJobHours,2)
 
-                #Defining our variable for the foreman timecard
-                foreman = 'No Timecard Entry for This Equipment/Date'
+                    #Defining our variable for the foreman timecard
+                    foreman = 'No Timecard Entry for This Equipment/Date'
 
-                #Updating our list:
-                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
+                    #Updating our list:
+                    equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
-            #=======================================
-            #If a blank list is not returned, let's pull the actual hours and perform our calcs
-            else:
-                #If there are mutliple entries for this equipment, we will want to iterate through each and total the hours:
-                heavyJobHours = 0
-                foreman = ''
+                #=======================================
+                #If a blank list is not returned, let's pull the actual hours and perform our calcs
+                else:
+                    #If there are mutliple entries for this equipment, we will want to iterate through each and total the hours:
+                    heavyJobHours = 0
+                    foreman = ''
 
-                for j in range(len(data)):
-                    heavyJobHours = heavyJobHours+float(data[j][7])
-                    foreman = foreman+data[j][6]+', '
+                    for j in range(len(data)):
+                        heavyJobHours = heavyJobHours+float(data[j][7])
+                        foreman = foreman+data[j][6]+', '
 
-                #Calculating our hour delta:
-                hourDelta = round(entryGPShours-heavyJobHours,2)
-                
-                #Updating our list:
-                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
+                    #Calculating our hour delta:
+                    hourDelta = round(entryGPShours-heavyJobHours,2)
+                    
+                    #Updating our list:
+                    equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
 
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
-#endregion
-
-
-#===============================================================================================================================================================
-#Next, let's update our databse table:
-#region
+    #endregion
 
 
-#============================================================================
-#First, let's delete any rows in this table that are in our list of dates for this period:
-for i in range(len(dates)):
-    entryDate = dates[i]
-
-    result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", "date", entryDate)
+    #===============================================================================================================================================================
+    #Next, let's update our databse table:
+    #region
 
 
-#============================================================================
-#Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
+    #============================================================================
+    #First, let's delete any rows in this table that are in our list of dates for this period:
+    for i in range(len(dates)):
+        entryDate = dates[i]
 
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Equipment_Utilization_Data")
+        result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", "date", entryDate)
 
-rowcount = len(data)+1
 
-#============================================================================
-#Function to insert data into the "Master_Equipment_GPS_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Equipment_Utilization_Data').insert(data).execute()
-    return response
+    #============================================================================
+    #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
 
-#============================================================================
-#Iterating through our dictionary items created above: 
-for i in range(len(equipmentUtilizationList)):
-    entryDate = equipmentUtilizationList[i][0]
-    entryEquipID = equipmentUtilizationList[i][1]
-    entryEquipDescription = equipmentUtilizationList[i][2]
-    entryGPShours = equipmentUtilizationList[i][3]
-    heavyJobHours = equipmentUtilizationList[i][4]
-    hourDelta = equipmentUtilizationList[i][5]
-    primaryLocation = equipmentUtilizationList[i][6]
-    projectManager = equipmentUtilizationList[i][7]
-    foreman = equipmentUtilizationList[i][8]
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Master_Equipment_Utilization_Data")
 
+    rowcount = len(data)+1
+
+    #============================================================================
+    #Function to insert data into the "Master_Equipment_GPS_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Equipment_Utilization_Data').insert(data).execute()
+        return response
+
+    #============================================================================
+    #Iterating through our dictionary items created above: 
+    for i in range(len(equipmentUtilizationList)):
+        entryDate = equipmentUtilizationList[i][0]
+        entryEquipID = equipmentUtilizationList[i][1]
+        entryEquipDescription = equipmentUtilizationList[i][2]
+        entryGPShours = equipmentUtilizationList[i][3]
+        heavyJobHours = equipmentUtilizationList[i][4]
+        hourDelta = equipmentUtilizationList[i][5]
+        primaryLocation = equipmentUtilizationList[i][6]
+        projectManager = equipmentUtilizationList[i][7]
+        foreman = equipmentUtilizationList[i][8]
+
+        
+        #============================================================================
+        #Inserting the data into our Supabase database table:
+        data_to_insert = {
+            'id':rowcount,
+            'date':entryDate,
+            'equipID':entryEquipID,
+            'equipDescrip':entryEquipDescription,
+            'gpsHours':entryGPShours,
+            'heavyJobHours':heavyJobHours,
+            'hourDelta':hourDelta,
+            'dollarRate':'0',
+            'dollarDelta':'0',
+            'equipmentLocation':primaryLocation,
+            'latestSSDeliveryForeman':'',
+            'foreman':foreman, 
+            'projectManager':projectManager
+
+        }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = '"Master_Equipment_Utilization_Data" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Master_Equipment_Utilization_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
     
-    #============================================================================
-    #Inserting the data into our Supabase database table:
-    data_to_insert = {
-        'id':rowcount,
-        'date':entryDate,
-        'equipID':entryEquipID,
-        'equipDescrip':entryEquipDescription,
-        'gpsHours':entryGPShours,
-        'heavyJobHours':heavyJobHours,
-        'hourDelta':hourDelta,
-        'dollarRate':'0',
-        'dollarDelta':'0',
-        'equipmentLocation':primaryLocation,
-        'latestSSDeliveryForeman':'',
-        'foreman':foreman, 
-        'projectManager':projectManager
-
-    }
-
-    rowcount=rowcount+1
-
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
-
-
-#endregion
-
-
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
-
-
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
