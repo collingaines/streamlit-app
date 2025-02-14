@@ -162,7 +162,33 @@ def sendEmail(recipient, subject, emailBody):
     conn.quit()
 
 
+#================================================================
+#Writing a function that will pull the city out of our string that gets returned in our master gps data database table:
+import re
 
+def extract_city(address_string: str) -> str:
+    """
+    Extracts the city name from the given address string.
+    The city is always the fourth element in the comma-separated address after 'GPS Coordinate Address:'.
+    
+    :param address_string: str, formatted address string
+    :return: str, extracted city name
+    """
+    # Extract the part after 'GPS Coordinate Address:'
+    match = re.search(r'GPS Coordinate Address: (.+)', address_string)
+    
+    if match:
+        address_parts = [part.strip() for part in match.group(1).split(',')]
+        
+        # The city is the fourth element in the address structure
+        if len(address_parts) >= 4:
+            return address_parts[2]  # City name is at index 2 (zero-based index)
+    
+    return "City not found"  # Return a fallback message if extraction fails
+
+# Example usage
+#address_string = "OUTSIDE OF GEOFENCES! GPS Coordinate Address: 308, Plantation Drive, Coppell, Dallas County, Texas, 75019, United States"
+#city = extract_city(address_string)
 
 
 
@@ -2390,7 +2416,7 @@ start_time = time.time()
 try:
 
     #===============================================================================================================================================================
-    #First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
+    #First, let's create a list of all dates in the past 2 weeks that we want to perform our utilization calcs for:
     #region
 
     print('Creating a list of dates that we want to create our report for...')
