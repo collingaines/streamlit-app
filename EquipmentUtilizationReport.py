@@ -474,9 +474,9 @@ for i in range(len(dates)):
         entryGPShours = data[j][4]
         heavyJobHours = data[j][5]
         hourDelta = data[j][6]
-        primaryLocation = data[j][7]
-        projectManager = data[j][8]
-        foreman = data[j][9]
+        primaryLocation = data[j][9]
+        projectManager = data[j][12]
+        foreman = data[j][11]
 
 
         #Updating our list:
@@ -612,12 +612,10 @@ wb.save('EquipmentUtilizationReport.xlsx')
 
 print('Generating email and sending to relevant DDM employees...')
 
-
 #==================================================================================
 #First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
 startDate = dates[0]
 endDate = dates[-1]
-
 
 
 #==================================================================================
@@ -657,7 +655,7 @@ def convert_into_binary(file_path):
 excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
 
 #Adding the excel report as an attachment:
-newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit.xlsx')
+newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit ({} through {}).xlsx'.format(startDate, endDate))
 
 #Sending the email:
 conn.send_message(newMessage)

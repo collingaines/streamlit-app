@@ -130,6 +130,41 @@ def convert_utc_to_central(utc_date_str: str) -> str:
     return central_datetime.strftime('%Y-%m-%d')
 
 
+#================================================================
+#Writing a function that sends an email with an input message
+import smtplib
+from email.message import EmailMessage
+
+def sendEmail(recipient, subject, emailBody):
+    conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
+    #the ehlo function actually connects you to the server
+    conn.ehlo()
+    #starting the tls encryption to protect our password
+    conn.starttls()
+    #now that we are connected, let's login
+    conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
+
+    newMessage = EmailMessage()    #creating an object of EmailMessage class
+    newMessage['Subject'] = subject #Defining email subject
+    newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
+    #newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
+    newMessage['To'] = recipient
+
+    #Now let's build the string to be added to our email message!
+    emailcontentstring = emailBody
+
+    newMessage.set_content(emailcontentstring)
+
+    #Sending the email:
+    conn.send_message(newMessage)
+
+    #When you're done just call the quit method to end the connection
+    conn.quit()
+
+
+
+
+
 
 print('SUCCESS')
 
@@ -1820,360 +1855,381 @@ print('Connecting to the HCSS API and pulling data from the "Equipment Master Li
 
 start_time = time.time()
 
+try:
 
-#==============================================================================================================================================================================================
-#Pulling the Heavy Job Equipment data from the HCSS API and updating our "Equipment GPS All Data" database
-#region
+    #==============================================================================================================================================================================================
+    #Pulling the Heavy Job Equipment data from the HCSS API and updating our "Equipment GPS All Data" database
+    #region
 
-#===============================================================================================
-#Connecting to the timecard endpoint of the HCSS API:
-HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/hours/equipment"
-
-
-#Passing our token value generated above to our "HEADERS" variable:
-HEADERS = {
-"Authorization": "Bearer {}".format(token)
-}
-
-#===============================================================================================
-#We only want to pull entries for the past 2 weeks, as that is what we will be updating:
-#Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
-from datetime import datetime, timedelta
-
-def get_current_datetime():
-    now = datetime.utcnow()
-    formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return formatted_datetime
-
-endDate = str(get_current_datetime())
-
-#For our start date of our API query, let's go back 2 weeks. We DO NOT want to use the time, just the date:
-current_utc_time = datetime.utcnow()
-
-twoWeeksAgoUTC = current_utc_time - timedelta(weeks=2)
-
-startDate = str(twoWeeksAgoUTC)[0:10]+'T00:00:00'
+    #===============================================================================================
+    #Connecting to the timecard endpoint of the HCSS API:
+    HCSS_API_ENDPOINT = "https://api.hcssapps.com/heavyjob/api/v1/hours/equipment"
 
 
-#Defining our "payload" which will be the filter information that we send to the HCSS API:
-payload = {
-    "includeAllJobs": True,
-    "includeInactiveEquipment": True,
-    "startDate": startDate,
-    "endDate": endDate,
+    #Passing our token value generated above to our "HEADERS" variable:
+    HEADERS = {
+    "Authorization": "Bearer {}".format(token)
     }
 
-#===============================================================================================
-#Finally, let's generate store our response which includes all of our raw data to a variable:
-response = requests.post(HCSS_API_ENDPOINT, headers=HEADERS, json=payload)
+    #===============================================================================================
+    #We only want to pull entries for the past 2 weeks, as that is what we will be updating:
+    #Generating today's date/time and converting it into UTC formatting so that we can feed it as a parameter into our HCSS API query:
+    from datetime import datetime, timedelta
 
-#===============================================================================================
-#Creating a dictionary of values that converts the equipment IDs shown in Heavy Job to the standard IDs defined in our "Master Equipment List" smartsheet:
+    def get_current_datetime():
+        now = datetime.utcnow()
+        formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return formatted_datetime
 
-MySheet = smart.Sheets.get_sheet('1336754816634756')
+    endDate = str(get_current_datetime())
 
-heavyJobEquipIDconversionDict = {}
+    #For our start date of our API query, let's go back 2 weeks. We DO NOT want to use the time, just the date:
+    current_utc_time = datetime.utcnow()
 
-for MyRow in MySheet.rows:
-    heavyJobEquipID = MyRow.cells[14].value
-    masterListEquipID = MyRow.cells[0].value
+    twoWeeksAgoUTC = current_utc_time - timedelta(weeks=2)
 
-    if heavyJobEquipID!=None:
-        heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
-
-
-#===============================================================================================
-#Looping through the API data and generating a list of values for our database table:
-
-#A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
-if response.status_code == 200:
-    data = response.json()
-
-    results = data.get('results')
-
-    equipmentHourInfoList = []
-
-    for i in range(len(results)):
-        equipmentHCSSAPIid = results[i].get('equipment').get('equipmentId')
-        equipmentCode = results[i].get('equipment').get('equipmentCode')
-        equipmentDescription = results[i].get('equipment').get('equipmentDescription')
-        isRental = results[i].get('equipment').get('isRental')
-        
-        foremanHCSSAPIid = results[i].get('foreman').get('employeeId')
-        employeeCode = results[i].get('foreman').get('employeeCode')
-        employeeFirstName = results[i].get('foreman').get('employeeFirstName')
-        employeeLastName = results[i].get('foreman').get('employeeLastName')
-
-        jobHCSSAPIId = results[i].get('job').get('jobId')
-        jobCode = results[i].get('job').get('jobCode')
-        jobDescription = results[i].get('job').get('jobDescription')
-
-        date = results[i].get('date')
-
-        notes = results[i].get('notes')
-
-        meterStart = results[i].get('meterStart')
-        meterStop = results[i].get('meterStop')
-        timeCardShift = results[i].get('timeCardShift')
-        timeCardRevision = results[i].get('timeCardRevision')
-
-        gpsID = results[i].get('gpsID')
-        rowOrder = results[i].get('rowOrder')
-
-        if results[i].get('linkedEmployee')!=None:
-            linkedEmployeeHCSSAPIid = results[i].get('linkedEmployee').get('id')
-            code = results[i].get('linkedEmployee').get('code')
-            firstName = results[i].get('linkedEmployee').get('firstName')
-            lastName = results[i].get('linkedEmployee').get('lastName')
-
-            linkedEmployeeRowOrder = results[i].get('linkedEmployeeRowOrder')
-        else:
-            linkedEmployeeHCSSAPIid = 'None'
-            code = 'None'
-            firstName = 'None'
-            lastName = 'None'
-
-            linkedEmployeeRowOrder = 'None'
+    startDate = str(twoWeeksAgoUTC)[0:10]+'T00:00:00'
 
 
-        #The hours charged for each piece of eqiupment come in a list of dictinoaries for each cost code, so let's create a list here to store these values
-        costCodeHourList = results[i].get('hoursDetails')
+    #Defining our "payload" which will be the filter information that we send to the HCSS API:
+    payload = {
+        "includeAllJobs": True,
+        "includeInactiveEquipment": True,
+        "startDate": startDate,
+        "endDate": endDate,
+        }
 
-        for j in range(len(costCodeHourList)):
-            costCodeHCSSAPIid = costCodeHourList[j].get('costCode').get('costCodeId')
-            costCodeCode = costCodeHourList[j].get('costCode').get('costCodeCode')
-            costCodeDescription = costCodeHourList[j].get('costCode').get('costCodeDescription')
-        
-            totalHours = costCodeHourList[j].get('totalHours')
-            isInTimeCardHours = costCodeHourList[j].get('isInTimeCardHours')
-            isCosted = costCodeHourList[j].get('isCosted')
+    #===============================================================================================
+    #Finally, let's generate store our response which includes all of our raw data to a variable:
+    response = requests.post(HCSS_API_ENDPOINT, headers=HEADERS, json=payload)
 
-            #======================================================
-            #Converting our heavy job equipment ID to the standard equipment ID defined in the "Master Equipment List" smartsheet using our dictionary created above:
-            #heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
+    #===============================================================================================
+    #Creating a dictionary of values that converts the equipment IDs shown in Heavy Job to the standard IDs defined in our "Master Equipment List" smartsheet:
 
-            if equipmentCode in heavyJobEquipIDconversionDict:
-                equipmentCode=heavyJobEquipIDconversionDict[equipmentCode]
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+    heavyJobEquipIDconversionDict = {}
+
+    for MyRow in MySheet.rows:
+        heavyJobEquipID = MyRow.cells[14].value
+        masterListEquipID = MyRow.cells[0].value
+
+        if heavyJobEquipID!=None:
+            heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
+
+
+    #===============================================================================================
+    #Looping through the API data and generating a list of values for our database table:
+
+    #A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+    if response.status_code == 200:
+        data = response.json()
+
+        results = data.get('results')
+
+        equipmentHourInfoList = []
+
+        for i in range(len(results)):
+            equipmentHCSSAPIid = results[i].get('equipment').get('equipmentId')
+            equipmentCode = results[i].get('equipment').get('equipmentCode')
+            equipmentDescription = results[i].get('equipment').get('equipmentDescription')
+            isRental = results[i].get('equipment').get('isRental')
             
+            foremanHCSSAPIid = results[i].get('foreman').get('employeeId')
+            employeeCode = results[i].get('foreman').get('employeeCode')
+            employeeFirstName = results[i].get('foreman').get('employeeFirstName')
+            employeeLastName = results[i].get('foreman').get('employeeLastName')
 
-            #======================================================
-            #Finally, updating our database. Let's keep it inside of this loop so that a new row of our databse is added for each cost code entry for this equipment:
+            jobHCSSAPIId = results[i].get('job').get('jobId')
+            jobCode = results[i].get('job').get('jobCode')
+            jobDescription = results[i].get('job').get('jobDescription')
+
+            date = results[i].get('date')
+
+            notes = results[i].get('notes')
+
+            meterStart = results[i].get('meterStart')
+            meterStop = results[i].get('meterStop')
+            timeCardShift = results[i].get('timeCardShift')
+            timeCardRevision = results[i].get('timeCardRevision')
+
+            gpsID = results[i].get('gpsID')
+            rowOrder = results[i].get('rowOrder')
+
+            if results[i].get('linkedEmployee')!=None:
+                linkedEmployeeHCSSAPIid = results[i].get('linkedEmployee').get('id')
+                code = results[i].get('linkedEmployee').get('code')
+                firstName = results[i].get('linkedEmployee').get('firstName')
+                lastName = results[i].get('linkedEmployee').get('lastName')
+
+                linkedEmployeeRowOrder = results[i].get('linkedEmployeeRowOrder')
+            else:
+                linkedEmployeeHCSSAPIid = 'None'
+                code = 'None'
+                firstName = 'None'
+                lastName = 'None'
+
+                linkedEmployeeRowOrder = 'None'
+
+
+            #The hours charged for each piece of eqiupment come in a list of dictinoaries for each cost code, so let's create a list here to store these values
+            costCodeHourList = results[i].get('hoursDetails')
+
+            for j in range(len(costCodeHourList)):
+                costCodeHCSSAPIid = costCodeHourList[j].get('costCode').get('costCodeId')
+                costCodeCode = costCodeHourList[j].get('costCode').get('costCodeCode')
+                costCodeDescription = costCodeHourList[j].get('costCode').get('costCodeDescription')
             
-            equipmentHourInfoList.append([
-                equipmentHCSSAPIid,
-                equipmentCode,
-                equipmentDescription,
-                isRental,
-                foremanHCSSAPIid,
-                employeeCode,
-                employeeFirstName,
-                employeeLastName,
-                jobHCSSAPIId,
-                jobCode,
-                jobDescription,
-                date,
-                notes,
-                meterStart,
-                meterStop,
-                timeCardShift,
-                timeCardRevision,
-                costCodeHCSSAPIid,
-                costCodeCode,
-                costCodeDescription,
-                totalHours,
-                isInTimeCardHours,
-                isCosted,
-                gpsID,
-                rowOrder,
-                linkedEmployeeHCSSAPIid,
-                code,
-                firstName,
-                lastName,
-                linkedEmployeeRowOrder
-                ])
-else:
-    print('HCSS API ERROR: {}'.format(response.status_code))
+                totalHours = costCodeHourList[j].get('totalHours')
+                isInTimeCardHours = costCodeHourList[j].get('isInTimeCardHours')
+                isCosted = costCodeHourList[j].get('isCosted')
 
-#===============================================================================================
-#Let's delete all existing entries up to 2 weeks back so that we don't enter any duplicate entries into our database:
+                #======================================================
+                #Converting our heavy job equipment ID to the standard equipment ID defined in the "Master Equipment List" smartsheet using our dictionary created above:
+                #heavyJobEquipIDconversionDict[heavyJobEquipID]=masterListEquipID
 
-#=======================================
-#First, let's create a list of dates to iterate through when delete prior entries: 
-from datetime import datetime, timedelta
-import pytz
+                if equipmentCode in heavyJobEquipIDconversionDict:
+                    equipmentCode=heavyJobEquipIDconversionDict[equipmentCode]
+                
 
-# Define US Central Time Zone
-central_tz = pytz.timezone('America/Chicago')
-
-# Get today's date in US Central Time
-today = datetime.now(central_tz).date()
-
-# Generate list of dates for the past 14 days
-dateToDeleteList = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
-
-#=======================================
-#Next, let's iterate through our date list and delete the entries in our databse for each:
-for i in range(len(dateToDeleteList)):
-    entryDate = dateToDeleteList[i]
-    result = delete_rows_by_value(supabase_url, supabase_key, "Equipment_Timecard_All_Data", "date", entryDate)
-
-
-#=================================================================================================
-#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Equipment_Timecard_All_Data")
-
-rowcount = len(data)+1
-
-
-#=========================================================================================
-#Function to insert data into the "Equipment_GPS_All_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Equipment_Timecard_All_Data').insert(data).execute()
-    return response
-
-
-#=========================================================================================
-#Inserting the data into our Supabase database table:
-for i in range(len(equipmentHourInfoList)):
-
-    data_to_insert = {
-        'id':rowcount,
-        'equipmentHCSSAPIid':equipmentHourInfoList[i][0],
-        'equipmentCode':equipmentHourInfoList[i][1],
-        'equipmentDescription':equipmentHourInfoList[i][2],
-        'isRental':equipmentHourInfoList[i][3],
-        'foremanHCSSAPIid':equipmentHourInfoList[i][4],
-        'employeeCode':equipmentHourInfoList[i][5],
-        'employeeFirstName':equipmentHourInfoList[i][6],
-        'employeeLastName':equipmentHourInfoList[i][7],
-        'jobHCSSAPIId':equipmentHourInfoList[i][8],
-        'jobCode':equipmentHourInfoList[i][9],
-        'jobDescription':equipmentHourInfoList[i][10],
-        'date':equipmentHourInfoList[i][11],
-        'notes':equipmentHourInfoList[i][12],
-        'meterStart':equipmentHourInfoList[i][13],
-        'meterStop':equipmentHourInfoList[i][14],
-        'timeCardShift':equipmentHourInfoList[i][15],
-        'timeCardRevision':equipmentHourInfoList[i][16],
-        'costCodeHCSSAPIid':equipmentHourInfoList[i][17],
-        'costCodeCode':equipmentHourInfoList[i][18],
-        'costCodeDescription':equipmentHourInfoList[i][19],
-        'totalHours':equipmentHourInfoList[i][20],
-        'isInTimeCardHours':equipmentHourInfoList[i][21],
-        'isCosted':equipmentHourInfoList[i][22],
-        'gpsID':equipmentHourInfoList[i][23],
-        'rowOrder':equipmentHourInfoList[i][24],
-        'linkedEmployeeHCSSAPIid':equipmentHourInfoList[i][25],
-        'code':equipmentHourInfoList[i][26],
-        'firstName':equipmentHourInfoList[i][27],
-        'lastName':equipmentHourInfoList[i][28],
-        'linkedEmployeeRowOrder':equipmentHourInfoList[i][29]
-
-    }
-
-    rowcount=rowcount+1
-
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
-
-
-
-#endregion
-
-
-#==============================================================================================================================================================================================
-#Next, let's consolidate our equipment hour entries and enter them into our "Master_Equipment_Timecard_Data" database table:
-#region
-
-
-#=================================================================================================
-#First, let's iterate through our list of equipment hour data created above and create a dictionary that sums the total hours for each piece of equipment/date:
-equipmentHourDictionary = {}
-
-for i in range(len(equipmentHourInfoList)):
-    equipCode = equipmentHourInfoList[i][1]
-    equipDescription = equipmentHourInfoList[i][2]
-    date = equipmentHourInfoList[i][11]
-    jobCode = equipmentHourInfoList[i][9]
-    jobDescription = equipmentHourInfoList[i][10]
-    foremanCode = equipmentHourInfoList[i][5]
-    foreman = equipmentHourInfoList[i][6]+' '+equipmentHourInfoList[i][7]
-    costCode = equipmentHourInfoList[i][18]
-    fullCostCode = jobCode+'.'+costCode
-    equipmentHours = equipmentHourInfoList[i][20]
-    equipmentHCSSAPIid = equipmentHourInfoList[i][0]
-
-    #Creating a key for our dictinoary:
-    key = (equipCode, date)
-
-    #If this key is already in our dictionary, we will add to the existing equipment hour values:
-    if key in equipmentHourDictionary:
-        newEquipmentHours = float(equipmentHourDictionary[key][4])+float(equipmentHours)
-
-        equipmentHourDictionary[key]=[equipDescription, jobCode, fullCostCode, foreman, newEquipmentHours, equipmentHCSSAPIid, jobDescription, foremanCode]
-
-    #If not, then we will enter our values straight into the dictionary:
+                #======================================================
+                #Finally, updating our database. Let's keep it inside of this loop so that a new row of our databse is added for each cost code entry for this equipment:
+                
+                equipmentHourInfoList.append([
+                    equipmentHCSSAPIid,
+                    equipmentCode,
+                    equipmentDescription,
+                    isRental,
+                    foremanHCSSAPIid,
+                    employeeCode,
+                    employeeFirstName,
+                    employeeLastName,
+                    jobHCSSAPIId,
+                    jobCode,
+                    jobDescription,
+                    date,
+                    notes,
+                    meterStart,
+                    meterStop,
+                    timeCardShift,
+                    timeCardRevision,
+                    costCodeHCSSAPIid,
+                    costCodeCode,
+                    costCodeDescription,
+                    totalHours,
+                    isInTimeCardHours,
+                    isCosted,
+                    gpsID,
+                    rowOrder,
+                    linkedEmployeeHCSSAPIid,
+                    code,
+                    firstName,
+                    lastName,
+                    linkedEmployeeRowOrder
+                    ])
+    
+    #===============================================================================================
     else:
-        equipmentHourDictionary[key]=[equipDescription, jobCode, fullCostCode, foreman, equipmentHours, equipmentHCSSAPIid, jobDescription, foremanCode]
+        #=======================================
+        #Printing out our error message followed by some helpful notes on the response code:
+        print('HCSS API ERROR: {}'.format(response.status_code))
+        print('Response Code Text: {}'.format(response.text))
+        print('Request Error Code Notes:')
+        print('    > 400/Bad Request: The most common reason for receiving a a Bad Request (HTTP 400) is sending invalid input.  (e.g., trying to create a cost code on a job that does not exist).')
+        print('    > 401/Unauthorized: Most of the time, this error code is caused by a missing token. ')
+        print('    > 403/Forbidden: The HCSS API returns Forbidden (HTTP 403) if an authorization token lacks the required scope.  APIs typically have at least two scopes: one providing read access, and one providing read+write.')
+
+        #=======================================
+        #Using the "raise" method to throw off an error that will break the try/except statement that this script is running in. We don't want to delete the existing database data if we don't get data from our API!
+        raise ValueError("There was an error and no data was retrieved from the HCSS API!")
+    
+
+    #===============================================================================================
+    #Let's delete all existing entries up to 2 weeks back so that we don't enter any duplicate entries into our database:
+
+    #=======================================
+    #First, let's create a list of dates to iterate through when delete prior entries: 
+    from datetime import datetime, timedelta
+    import pytz
+
+    # Define US Central Time Zone
+    central_tz = pytz.timezone('America/Chicago')
+
+    # Get today's date in US Central Time
+    today = datetime.now(central_tz).date()
+
+    # Generate list of dates for the past 14 days
+    dateToDeleteList = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
+
+    #=======================================
+    #Next, let's iterate through our date list and delete the entries in our databse for each:
+    for i in range(len(dateToDeleteList)):
+        entryDate = dateToDeleteList[i]
+        result = delete_rows_by_value(supabase_url, supabase_key, "Equipment_Timecard_All_Data", "date", entryDate)
 
 
-#=================================================================================================
-#Next, let's iterate through our date list of every date the past 2 weeks (created above) and delete the entries in our database for each:
-for i in range(len(dateToDeleteList)):
-    entryDate = dateToDeleteList[i]
-    result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", "date", entryDate)
+    #=================================================================================================
+    #Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Equipment_Timecard_All_Data")
+
+    rowcount = len(data)+1
 
 
-#=================================================================================================
-#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Equipment_Timecard_Data")
-
-rowcount = len(data)+1
-
-
-#=================================================================================================
-#Function to insert data into the "Master_Equipment_Timecard_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Master_Equipment_Timecard_Data').insert(data).execute()
-    return response
+    #=========================================================================================
+    #Function to insert data into the "Equipment_GPS_All_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Equipment_Timecard_All_Data').insert(data).execute()
+        return response
 
 
-#=================================================================================================
-#Finally, let's iterate through the items in our dictionary above and add them to our database: 
-for key,values in equipmentHourDictionary.items():
-    data_to_insert = {
-        'id':rowcount,
-        'equipmentCode':key[0],
-        'equipmentDescription':values[0],
-        'date':key[1],
-        'jobCode':values[1],
-        'fullCostCode':values[2],
-        'foreman':values[3],
-        'equipmentHours':values[4],
-        'equipmentHCSSAPIid':values[5],
-        'jobDescription':values[6],
-        'foremanCode':values[7]
+    #=========================================================================================
+    #Inserting the data into our Supabase database table:
+    for i in range(len(equipmentHourInfoList)):
 
-    }
+        data_to_insert = {
+            'id':rowcount,
+            'equipmentHCSSAPIid':equipmentHourInfoList[i][0],
+            'equipmentCode':equipmentHourInfoList[i][1],
+            'equipmentDescription':equipmentHourInfoList[i][2],
+            'isRental':equipmentHourInfoList[i][3],
+            'foremanHCSSAPIid':equipmentHourInfoList[i][4],
+            'employeeCode':equipmentHourInfoList[i][5],
+            'employeeFirstName':equipmentHourInfoList[i][6],
+            'employeeLastName':equipmentHourInfoList[i][7],
+            'jobHCSSAPIId':equipmentHourInfoList[i][8],
+            'jobCode':equipmentHourInfoList[i][9],
+            'jobDescription':equipmentHourInfoList[i][10],
+            'date':equipmentHourInfoList[i][11],
+            'notes':equipmentHourInfoList[i][12],
+            'meterStart':equipmentHourInfoList[i][13],
+            'meterStop':equipmentHourInfoList[i][14],
+            'timeCardShift':equipmentHourInfoList[i][15],
+            'timeCardRevision':equipmentHourInfoList[i][16],
+            'costCodeHCSSAPIid':equipmentHourInfoList[i][17],
+            'costCodeCode':equipmentHourInfoList[i][18],
+            'costCodeDescription':equipmentHourInfoList[i][19],
+            'totalHours':equipmentHourInfoList[i][20],
+            'isInTimeCardHours':equipmentHourInfoList[i][21],
+            'isCosted':equipmentHourInfoList[i][22],
+            'gpsID':equipmentHourInfoList[i][23],
+            'rowOrder':equipmentHourInfoList[i][24],
+            'linkedEmployeeHCSSAPIid':equipmentHourInfoList[i][25],
+            'code':equipmentHourInfoList[i][26],
+            'firstName':equipmentHourInfoList[i][27],
+            'lastName':equipmentHourInfoList[i][28],
+            'linkedEmployeeRowOrder':equipmentHourInfoList[i][29]
 
-    rowcount=rowcount+1
+        }
 
-    #============================================================================
-    #Using the "insert_data" function defined at the top of this script
-    insert_response = insert_data(data_to_insert)
+        rowcount=rowcount+1
 
-#endregion
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
 
 
 
-#Printing out the code block runtime to the console: 
-print('<SUCCESS>')
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    #endregion
+
+
+    #==============================================================================================================================================================================================
+    #Next, let's consolidate our equipment hour entries and enter them into our "Master_Equipment_Timecard_Data" database table:
+    #region
+
+
+    #=================================================================================================
+    #First, let's iterate through our list of equipment hour data created above and create a dictionary that sums the total hours for each piece of equipment/date:
+    equipmentHourDictionary = {}
+
+    for i in range(len(equipmentHourInfoList)):
+        equipCode = equipmentHourInfoList[i][1]
+        equipDescription = equipmentHourInfoList[i][2]
+        date = equipmentHourInfoList[i][11]
+        jobCode = equipmentHourInfoList[i][9]
+        jobDescription = equipmentHourInfoList[i][10]
+        foremanCode = equipmentHourInfoList[i][5]
+        foreman = equipmentHourInfoList[i][6]+' '+equipmentHourInfoList[i][7]
+        costCode = equipmentHourInfoList[i][18]
+        fullCostCode = jobCode+'.'+costCode
+        equipmentHours = equipmentHourInfoList[i][20]
+        equipmentHCSSAPIid = equipmentHourInfoList[i][0]
+
+        #Creating a key for our dictinoary:
+        key = (equipCode, date)
+
+        #If this key is already in our dictionary, we will add to the existing equipment hour values:
+        if key in equipmentHourDictionary:
+            newEquipmentHours = float(equipmentHourDictionary[key][4])+float(equipmentHours)
+
+            equipmentHourDictionary[key]=[equipDescription, jobCode, fullCostCode, foreman, newEquipmentHours, equipmentHCSSAPIid, jobDescription, foremanCode]
+
+        #If not, then we will enter our values straight into the dictionary:
+        else:
+            equipmentHourDictionary[key]=[equipDescription, jobCode, fullCostCode, foreman, equipmentHours, equipmentHCSSAPIid, jobDescription, foremanCode]
+
+
+    #=================================================================================================
+    #Next, let's iterate through our date list of every date the past 2 weeks (created above) and delete the entries in our database for each:
+    for i in range(len(dateToDeleteList)):
+        entryDate = dateToDeleteList[i]
+        result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", "date", entryDate)
+
+
+    #=================================================================================================
+    #Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+    #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+    data = fetch_data_from_table("Master_Equipment_Timecard_Data")
+
+    rowcount = len(data)+1
+
+
+    #=================================================================================================
+    #Function to insert data into the "Master_Equipment_Timecard_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Master_Equipment_Timecard_Data').insert(data).execute()
+        return response
+
+
+    #=================================================================================================
+    #Finally, let's iterate through the items in our dictionary above and add them to our database: 
+    for key,values in equipmentHourDictionary.items():
+        data_to_insert = {
+            'id':rowcount,
+            'equipmentCode':key[0],
+            'equipmentDescription':values[0],
+            'date':key[1],
+            'jobCode':values[1],
+            'fullCostCode':values[2],
+            'foreman':values[3],
+            'equipmentHours':values[4],
+            'equipmentHCSSAPIid':values[5],
+            'jobDescription':values[6],
+            'foremanCode':values[7]
+
+        }
+
+        rowcount=rowcount+1
+
+        #============================================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+    #endregion
+
+
+    #Printing out the code block runtime to the console: 
+    print('<SUCCESS>')
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+except:
+    recipient = 'collin@ddmcc.net'
+    subject = '"Master_Equipment_Timecard_Data" Database Update Failure'
+    emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed.'
+    
+    sendEmail(recipient, subject, emailBody)
 
 #endregion
 
