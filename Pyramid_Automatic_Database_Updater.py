@@ -1623,8 +1623,6 @@ for j in range(len(projectData)):
         projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
 
 
-
-
 #=========================================================================================
 #Next, let's iterate through our list created above and calculate the total hours and location for each:
 equipmentInfoDictionary = {}
@@ -1719,7 +1717,11 @@ for i in range(len(equipmentInfoTodayList)):
                 entryLong = 0
 
             address = get_address_from_coordinates(entryLat, entryLong) #using  our "get_address_from_coordinates" function defined at the top of this script
+            
+            #Adding our GPS coordinates to our address for reference in other scripts:
+            address=address+' ('+str(entryLat)+', '+str(entryLong)+')'
 
+            #Updating our address list:
             addressList.append(address)
 
         #Definng our project variable as the most common address found in our address list:

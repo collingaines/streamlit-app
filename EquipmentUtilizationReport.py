@@ -29,6 +29,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Color, PatternFill, Font, Border
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.formatting.rule import ColorScaleRule, CellIsRule, FormulaRule
+from openpyxl.styles import Border, Side
 
 import io
 
@@ -423,12 +424,37 @@ print('SUCCESS')
 #Next, let's create a list of all GPS data for each piece of equipment/date included in this week:
 #region
 
-print('Pulling GPS equipment hour data...')
+
+#==================================================================================
+#First, let's write a function that returns the day of the week when given a date. We only want to charge PTs on weekdays:
+from datetime import datetime
+
+def get_weekday_number(date_str: str) -> int:
+    """
+    Takes a date string in "YYYY-MM-DD" format and returns the day of the week as a number.
+    Monday = 0, Sunday = 6.
+    
+    :param date_str: Date string in "YYYY-MM-DD" format.
+    :return: Integer representing the day of the week (0 = Monday, 6 = Sunday).
+    """
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    return date_obj.weekday()
+
+# Example usage
+#print(get_weekday_number("2025-02-14"))  # Output: 4 (Friday)
+
+
+#==================================================================================
+#Next, let's add in our PTs using our "Master Fleet List" smartsheet:
+print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
 gpsDataList = []
 
 for i in range(len(dates)):
     entryDate = dates[i]
+    weekdayNumber = get_weekday_number(entryDate)
 
+    #============================================
+    #First, let's pull all of our gps data and add it to a list: 
     filters = {'date': entryDate}
     data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
 
@@ -440,7 +466,37 @@ for i in range(len(dates)):
 
         gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
 
+    #============================================
+    #Next, let's add in our PTs using our "Master Fleet List" smartsheet:
+
+    #We only want to include PTs if it is MON-FRI:
+    if weekdayNumber in [0, 1, 2, 3, 4]:
+
+        MySheet = smart.Sheets.get_sheet('601782195539844')
+
+        smartSheetFleetInfoList = []
+
+        for MyRow in MySheet.rows:
+            #We only want to pull PTs from the fleeet list, so let's only add to the list if the charge type is 8HR/DAY AND the equipment is active:
+            chargeType = MyRow.cells[11].value
+            status = MyRow.cells[12].value
+
+            if chargeType=='8HR/DAY' and status=='Active':
+                fleetID = MyRow.cells[0].value
+                fleetDescription = MyRow.cells[2].value
+                assignedTo = MyRow.cells[8].value
+                
+                #Rather than displaying the PT's location, we want to display who the PT is assigned to:
+                locationValue = 'PT Assigned To: '+assignedTo
+
+                #Updating our list:
+                gpsDataList.append([entryDate, fleetID, fleetDescription, 8, locationValue])
+
+
+
+
 print('SUCCESS')
+
 
 #endregion
 
@@ -653,8 +709,38 @@ sheet['H1'].font = Font(bold=True)
 sheet['I1'].value = 'Foreman'
 sheet['I1'].font = Font(bold=True)
 
-#row = sheet.row_dimensions[1]
-#row.font = Font(underline="double")
+#==================================================================================   
+#Freezing the top row of our report and adding a double border to the bottom:
+
+#Freezing the top row at cell C2 so that the date, equipID, and equip desc are frozen:
+sheet.freeze_panes = "D2"
+
+#Define a double border for the bottom
+double_border = Border(bottom=Side(style='double'))
+
+#Apply the border to each cell in the first row
+for cell in sheet[1]:  # ws[1] selects the first row
+    cell.border = double_border
+
+
+#==================================================================================   
+#Adding conditional formatting that highlights red any cells where the GPS hours don't match the HJ hours:
+
+#Define the conditional formatting fill (red background)
+red_fill = PatternFill(start_color="FF9999", end_color="FF9999", fill_type="solid")
+
+#Apply conditional formatting to a specified column (e.g., Column C)
+column_to_format = "F"  # Change this to your desired column
+
+sheet.conditional_formatting.add(
+    f"{column_to_format}2:{column_to_format}10000",  # Applies from row 2 to 100
+    CellIsRule(operator="greaterThan", formula=["0.25"], fill=red_fill)
+)
+
+sheet.conditional_formatting.add(
+    f"{column_to_format}2:{column_to_format}10000",
+    CellIsRule(operator="lessThan", formula=["-0.25"], fill=red_fill)
+)
 
 
 #==================================================================================
@@ -690,6 +776,65 @@ wb.save('EquipmentUtilizationReport.xlsx')
 
 #===============================================================================================================================================================
 #Finally, sending our email:
+#region
+
+print('Generating email and sending to relevant DDM employees...')
+
+
+#==================================================================================
+#First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
+startDate = dates[0]
+endDate = dates[-1]
 
 
 
+#==================================================================================
+#Next, building the email:
+import smtplib
+from email.message import EmailMessage
+
+conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
+#the ehlo function actually connects you to the server
+conn.ehlo()
+#starting the tls encryption to protect our password
+conn.starttls()
+#now that we are connected, let's login
+conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
+
+newMessage = EmailMessage()    #creating an object of EmailMessage class
+newMessage['Subject'] = "Equipment Hour Correction Audit for {} through {}".format(startDate, endDate) #Defining email subject
+newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
+#newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
+newMessage['To'] = 'collin@ddmcc.net, pyramidconstructionsupply@outlook.com'  #Defining reciever email
+
+#Now let's build the string to be added to our email message!
+emailcontentstring = 'Hello DDM Team,\n\nPlease see attached for the updated equipment hour audit report for {} through {}. Please make any and all listed corrections as soon as possible.\n\nThis is an automated email, so any direct replies may go unread. If you have any questions, please hit "Reply All" or make sure that Derek, Blake, and Collin are included on your email response.'.format(startDate, endDate)
+
+newMessage.set_content(emailcontentstring)
+
+
+#==================================================================================
+#Finally, attaching our excel report and sending this email
+
+#Converting the excel file into binary format so that we can attach it to our email:
+def convert_into_binary(file_path):
+    with open(file_path, 'rb') as file:
+        binary = file.read()
+    return binary
+
+excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
+
+#Adding the excel report as an attachment:
+newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit.xlsx')
+
+#Sending the email:
+conn.send_message(newMessage)
+
+#When you're done just call the quit method to end the connection
+conn.quit()
+
+
+print('SUCCESS')
+
+
+#endregion
