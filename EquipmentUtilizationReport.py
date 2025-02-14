@@ -445,33 +445,50 @@ def get_weekday_number(date_str: str) -> int:
 
 
 #==================================================================================
-#Next, let's add in our PTs using our "Master Fleet List" smartsheet:
-print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
+#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
+
+#============================================
+#Adding equipment from our main asset list:
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+chargeTypeDictionary = {}
+statusDictionary = {}
+
+for MyRow in MySheet.rows: 
+    entryEquipID = MyRow.cells[0].value
+    chargeType = MyRow.cells[11].value
+    entryStatus = MyRow.cells[12].value
+
+    chargeTypeDictionary[entryEquipID]=chargeType
+    statusDictionary[entryEquipID]=entryStatus
+
+#============================================
+#Adding equipemtn from our fleet list:
+MySheet = smart.Sheets.get_sheet('601782195539844')
+
+for MyRow in MySheet.rows: 
+    entryEquipID = MyRow.cells[0].value
+    chargeType = MyRow.cells[11].value
+    entryStatus = MyRow.cells[7].value
+
+    chargeTypeDictionary[entryEquipID]=chargeType
+    statusDictionary[entryEquipID]=entryStatus
+
+
+#==================================================================================
+#Next, create a list of fleet AND asset equipment that is charged at 8 hours that will be used to filter these results from our GPS data:
 gpsDataList = []
+idCheckList = [] #Will be used to check if an equipment ID is already in our list to filter from GPS entries:
 
 for i in range(len(dates)):
     entryDate = dates[i]
     weekdayNumber = get_weekday_number(entryDate)
 
-    #============================================
-    #First, let's pull all of our gps data and add it to a list: 
-    filters = {'date': entryDate}
-    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
-
-    for j in range(len(data)):
-        entryEquipID = data[j][2]
-        entryEquipDescription = data[j][3]
-        entryGPShours = data[j][4]
-        primaryLocation = data[j][5]
-
-        gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
-
-    #============================================
-    #Next, let's add in our PTs using our "Master Fleet List" smartsheet:
-
+    
     #We only want to include PTs if it is MON-FRI:
     if weekdayNumber in [0, 1, 2, 3, 4]:
-
+        #============================================
+        #First, let's add in our smartsheet fleet assets:
         MySheet = smart.Sheets.get_sheet('601782195539844')
 
         smartSheetFleetInfoList = []
@@ -485,16 +502,64 @@ for i in range(len(dates)):
                 fleetID = MyRow.cells[0].value
                 fleetDescription = MyRow.cells[2].value
                 assignedTo = MyRow.cells[8].value
-                
+                    
                 #Rather than displaying the PT's location, we want to display who the PT is assigned to:
                 locationValue = 'PT Assigned To: '+assignedTo
 
                 #Updating our list:
                 gpsDataList.append([entryDate, fleetID, fleetDescription, 8, locationValue])
 
+                #Updating our check list:
+                idCheckList.append(fleetID)
+        
+        #============================================
+        #Next, let's add in our equipment assets:
+        filters = {'date': entryDate}
+        data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
+
+        for j in range(len(data)):
+            entryEquipID = data[j][2]
+            entryEquipDescription = data[j][3]
+            entryGPShours = data[j][4]
+            primaryLocation = data[j][5]
+
+            #Pulling the charge type and status using our dictionaries created above:
+            thisChargeType = chargeTypeDictionary[entryEquipID]
+            thisStatus = statusDictionary[entryEquipID]
+
+            #If this is an 8HR/DAY charge type and has an acitve status then we want to update our lists:
+            if thisChargeType=='8HR/DAY' and thisStatus=='Active':
+                gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, 8, primaryLocation])
+
+                idCheckList.append(entryEquipID)
 
 
+#==================================================================================
+#Next, create a list of values that includes GPS hours for ALL equipment we want to see our on our report:
+print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
 
+for i in range(len(dates)):
+    entryDate = dates[i]
+    weekdayNumber = get_weekday_number(entryDate)
+
+    #============================================
+    #First, let's pull all of our gps data and add it to a list: 
+    filters = {'date': entryDate}
+    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
+
+    for j in range(len(data)):
+        entryEquipID = data[j][2]
+
+        #Important! To prevent duplicate entries for any assets with an "8HR/DAY" charge type filter them out here using your "idChecklist" created in the previous step:
+        if entryEquipID not in idCheckList:
+            entryEquipDescription = data[j][3]
+            entryGPShours = data[j][4]
+            primaryLocation = data[j][5]
+
+            gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
+
+
+    
 print('SUCCESS')
 
 
@@ -532,19 +597,6 @@ for MyRow in MySheet.rows:
         projectManagerCityDictionary[city]=projectManagerCityDictionary[city]+' OR '+projectManagerCityDictionary[city]
     else:
         projectManagerCityDictionary[city]=projectManager
-
-
-#==================================================================================
-#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
-MySheet = smart.Sheets.get_sheet('1336754816634756')
-
-chargeTypeDictionary = {}
-
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-
-    chargeTypeDictionary[entryEquipID]=chargeType
 
 
 #==================================================================================
@@ -647,7 +699,100 @@ for i in range(len(gpsDataList)):
                 equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
 
 
-print(equipmentUtilizationList)
+#print(equipmentUtilizationList)
+
+#endregion
+
+#===============================================================================================================================================================
+#Next, let's update our databse table:
+#region
+
+
+#============================================================================
+#First, let's delete any rows in this table that are in our list of dates for this period:
+for i in range(len(dates)):
+    entryDate = dates[i]
+
+    result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", "date", entryDate)
+
+
+#============================================================================
+#Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
+
+#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+data = fetch_data_from_table("Master_Equipment_Utilization_Data")
+
+rowcount = len(data)+1
+
+#============================================================================
+#Function to insert data into the "Master_Equipment_GPS_Data" table
+def insert_data(data: dict):
+    response = supabase_client.table('Master_Equipment_Utilization_Data').insert(data).execute()
+    return response
+
+#============================================================================
+#Iterating through our dictionary items created above: 
+for i in range(len(equipmentUtilizationList)):
+    entryDate = equipmentUtilizationList[i][0]
+    entryEquipID = equipmentUtilizationList[i][1]
+    entryEquipDescription = equipmentUtilizationList[i][2]
+    entryGPShours = equipmentUtilizationList[i][3]
+    heavyJobHours = equipmentUtilizationList[i][4]
+    hourDelta = equipmentUtilizationList[i][5]
+    primaryLocation = equipmentUtilizationList[i][6]
+    projectManager = equipmentUtilizationList[i][7]
+    foreman = equipmentUtilizationList[i][8]
+
+    
+    #============================================================================
+    #Inserting the data into our Supabase database table:
+    data_to_insert = {
+        'id':rowcount,
+        'date':entryDate,
+        'equipID':entryEquipID,
+        'equipDescrip':entryEquipDescription,
+        'gpsHours':entryGPShours,
+        'heavyJobHours':heavyJobHours,
+        'hourDelta':hourDelta,
+        'dollarRate':'0',
+        'dollarDelta':'0',
+        'equipmentLocation':primaryLocation,
+        'latestSSDeliveryForeman':'',
+        'foreman':foreman, 
+        'projectManager':projectManager
+
+    }
+
+    rowcount=rowcount+1
+
+    #============================================================================
+    #Using the "insert_data" function defined at the top of this script
+    insert_response = insert_data(data_to_insert)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endregion
 
