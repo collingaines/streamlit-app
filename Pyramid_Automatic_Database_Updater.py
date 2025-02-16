@@ -2052,21 +2052,28 @@ try:
     #endregion
 
 
+
     #Printing out the code block runtime to the console: 
     print('<SUCCESS>')
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentGPSDataUpdateSuccessStatus = 'Successful'
+    
     
 
-
-#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script. We will also want to update our "Report_Status_Tracking" database table if applicable:
 except:
     recipient = 'collin@ddmcc.net'
     subject = 'Failure to Update the "Equipment_GPS_All_Data" Database and "Master_Equipment_GPS_Data" in the "Hourly API Data Fetcher" Github Workflow'
     emailBody = 'Your script for updating the "Equipment_GPS_All_Data" database table and "Master_Equipment_GPS_Data" database table in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
     
     sendEmail(recipient, subject, emailBody)
+
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentGPSDataUpdateSuccessStatus = 'NOT Successful'
 
 #endregion
 
@@ -2451,6 +2458,11 @@ try:
     elapsed_time = end_time - start_time
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentTimecardDataUpdateSuccessStatus = 'Successful'
+
+
+
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
 except:
     recipient = 'collin@ddmcc.net'
@@ -2458,6 +2470,9 @@ except:
     emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
     
     sendEmail(recipient, subject, emailBody)
+
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentTimecardDataUpdateSuccessStatus = 'NOT Successful'
 
 #endregion
 
@@ -2867,6 +2882,9 @@ try:
     elapsed_time = end_time - start_time
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentUtilizationDataUpdateSuccessStatus = 'Successful'
+
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
 except:
     recipient = 'collin@ddmcc.net'
@@ -2875,7 +2893,86 @@ except:
     
     sendEmail(recipient, subject, emailBody)
 
+    #Defining a variable for use with our "Report_Status_Tracking" database table update at the end of this script:
+    equipmentUtilizationDataUpdateSuccessStatus = 'NOT Successful'
+
 #endregion
 
 
 
+#=====================================================================================================================================================================================================================================================================================================================
+#=====================================================================================================================================================================================================================================================================================================================
+print('<========================================================================================================================>')
+print('<Updating the "Report_Status_Tracking" Database Table: Using variables defined throughout this script to determine if certain reports are ready to send or not')
+print('<========================================================================================================================>')
+print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
+#region CLICK HERE TO EXPAND THIS SECTION
+
+#==============================================================================================================================================================================================
+#Finally, updating our "Report_Status_Tracking" database table with an entry indicating that the "Equipment Utilization Report" is ready to send now that this script has run successfully:
+#region
+
+#============================================================================
+#First, let's delete any rows in this table that are for our current date
+result = delete_rows_by_value(supabase_url, supabase_key, "Report_Status_Tracking", "reportName", "equipmentUtilizationReport")
+
+
+#============================================================================
+#Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
+
+#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+data = fetch_data_from_table("Report_Status_Tracking")
+
+rowcount = len(data)+1
+
+
+#============================================================================
+#Determining the report status for this report using the variables defined throughout this script:
+
+#==============================
+#If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
+if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
+    currentStatus='Ready To Send'
+    errorDescription='None'
+
+#==============================
+#If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
+else:
+    currentStatus='NOT Ready To Send'
+
+    errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
+
+
+#============================================================================
+#Finally, let's update our database:
+
+#==============================
+#Function to insert data into the "Master_Equipment_GPS_Data" table
+def insert_data(data: dict):
+    response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
+    return response
+
+
+#==============================
+#Inserting the data into our Supabase database table:
+data_to_insert = {
+    'id':rowcount,
+    'reportName':'equipmentUtilizationReport',
+    'currentStatus':currentStatus,
+    'errorDescription':errorDescription,
+    'errorDate':todayCentral
+
+}
+
+#==============================
+#Using the "insert_data" function defined at the top of this script
+insert_response = insert_data(data_to_insert)
+
+
+#endregion
+
+
+
+
+
+#endregion
