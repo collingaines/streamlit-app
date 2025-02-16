@@ -479,7 +479,7 @@ print('SUCCESS')
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Smartsheet Equipment Inspection Sheet Info>')
+print('<Updating the "Equipment_Inspection_Log" Database Table: Updating this database table with data from the smartsheet "DDM Equipment Inspections 1.0">')
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Inspection" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -658,7 +658,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Updating "Master_Equipment_Asset_List" Database Table from our "Master Equipment List" Smartsheet>')
+print('<Updating the "Master_Equipment_Asset_List" Database Table: Updating this database table with data from our "Master Equipment List" Smartsheet>')
 print('<========================================================================================================================>')
 print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -900,7 +900,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Connecting to the HCSS API, pulling all of our project data, and updating our database and smartsheet "Master Project Info List">')
+print('<Updating the "Master_Project_Info_List" Database Table & "Master Project Info List" Smartsheet: Connecting to the HCSS API, pulling all of our project data, and updating our database table and smartsheet>')
 print('<========================================================================================================================>')
 print('Connecting to the HCSS API and updating our "Master_Project_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -1254,7 +1254,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Connecting to the HCSS API, pulling all of our timecard data, and updating our database>')
+print('<Updating the "Master_Timecard_Information" Database Table: Connecting to the HCSS API, pulling all of our timecard data, and updating our database tables>')
 print('<========================================================================================================================>')
 print('Connecting to the HCSS API and updating our "Master_Timecard_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -1539,7 +1539,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Connecting to the HCSS API, pulling all of our GPS hour/location data, and updating our database>')
+print('<Updating the "Master_Equipment_GPS_Data" & "Equipment_GPS_All_Data" Database Tables: Connecting to the HCSS API, pulling all of our GPS hour/location data, and updating our database tables>')
 print('<========================================================================================================================>')
 print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and "Master_Equipment_GPS_Data" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -1548,7 +1548,6 @@ start_time = time.time()
 
 #Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
 try:
-
     #==============================================================================================================================================================================================
     #Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
     #region
@@ -1636,7 +1635,7 @@ try:
             #===================
             #Updating our list:
             equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
-    
+
     #============================================================================
     #If there wasn't a 200 code received, then there was an error and we will want to break this portion of the script and print out an error message:
     else:
@@ -1652,7 +1651,7 @@ try:
         #=======================================
         #Using the "raise" method to throw off an error that will break the try/except statement that this script is running in. We don't want to delete the existing database data if we don't get data from our API!
         raise ValueError("There was an error and no data was retrieved from the HCSS API!")
-    
+
     #============================================================================
     #Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
     from datetime import datetime
@@ -1739,7 +1738,7 @@ try:
     start_time = time.time()
 
     #=========================================================================================
-    #Creating a variable for today's date:
+    #Creating a variable for today's date in UTC:
     from datetime import datetime
 
     def get_current_datetime():
@@ -1748,6 +1747,20 @@ try:
         return formatted_datetime
 
     today = str(get_current_datetime())[0:10]
+
+    #=========================================================================================
+    #Creating a variable for yesterday's date in US central time as a string in the format "YYYY-MM-DD":
+    from datetime import datetime, timedelta
+    import pytz
+
+    def get_yesterdays_date_central():
+        central_tz = pytz.timezone('America/Chicago')
+        now_central = datetime.now(central_tz)
+        yesterday = now_central - timedelta(days=1)
+        return yesterday.strftime('%Y-%m-%d')
+
+
+    yesterdayCentral = get_yesterdays_date_central()
 
     #=========================================================================================
     #First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
@@ -1818,16 +1831,15 @@ try:
         equipDescript = equipmentInfoTodayList[i][1]
 
         #=========================================
-        #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID:
-        # filters = {"column1": "value1", "column2": "value2"}
-        # results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+        #Pulling all of the equipment data from our "Equipment_GPS_All_Data" database table for this piece of equipment TODAY and determining the highest meter reading for this equipment TODAY:
+
+        #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID today:
         filters = {"equipID": entryEquipID, 'date': todayCentral}
         results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
 
-        #=========================================
-        #Iterating through our list of values from our database and determining the highest/lowest hour readings to calculate our total hours for this date/equipment:
-        lowestHourReading = 5000000 #Putting this as an absurdly high number so that the first hour reading becomes the lowest
-        highestHourReading = 0
+        highestHourReadingToday = 0
+        lowestHourReadingToday = 5000000 #Setting this initial value to be an absurdly high number so that our first real value overwrites the initial value
+
         locationList = []
 
         for j in range(len(results)):
@@ -1837,10 +1849,10 @@ try:
             else:
                 entryHourReading = 0
 
-            if entryHourReading>highestHourReading:
-                highestHourReading=entryHourReading
-            if entryHourReading<lowestHourReading:
-                lowestHourReading=entryHourReading
+            if entryHourReading>highestHourReadingToday:
+                highestHourReadingToday=entryHourReading
+            if entryHourReading<lowestHourReadingToday:
+                lowestHourReadingToday=entryHourReading
 
             #Updating our location GPS coordinate list for this equipment/date:
             thisLat = results[j][6]
@@ -1848,10 +1860,57 @@ try:
 
             locationList.append([thisLat, thisLong])
         
+
+        #=========================================
+        #Calculating what the highest meter reading was for this piece of equipment YESTERDAY:
+
+        #===================
+        #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID today:
+        filters = {"equipID": entryEquipID, 'date': yesterdayCentral}
+        results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+        highestHourReadingYesterday = 0
+
+        #===================
+        #If there was a meter reading for this equipment yesterday, then we will use this to define our value for our highest meter reading yesterday: 
+        if results!=[]:
+            for j in range(len(results)):
+                #Calculating the min/max hour readings:
+                if results[j][10]!=None:
+                    entryHourReading = float(results[j][10])
+                else:
+                    entryHourReading = 0
+
+                if entryHourReading>highestHourReadingYesterday:
+                    highestHourReadingYesterday=entryHourReading
+
+        #===================
+        #If there wasn't a meter reading yesterday, then we will want to go through our "Equipment_GPS_All_Data" database for all dates and find the highest reading for a previous date:
+        else:
+            filters = {"equipID": entryEquipID}
+            results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+            for j in range(len(results)):
+                queryDate = results[j][12]
+
+                #Important! We don't want to consider today's date here, so let's filter it out of our calculation:
+                if queryDate!=todayCentral:
+                    #Calculating the min/max hour readings:
+                    if results[j][10]!=None:
+                        entryHourReading = float(results[j][10])
+                    else:
+                        entryHourReading = 0
+
+                    if entryHourReading>highestHourReadingYesterday:
+                        highestHourReadingYesterday=entryHourReading
+
+            #If there aren't any meter readings for this equipment that aren't for today, then this may be a new piece of equipment. If so, we want to set the highest meter reading value for yesterday to be the lowest for today:
+            highestHourReadingYesterday=lowestHourReadingToday
+
+
         #=========================================
         #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
-        totalEquipHours = highestHourReading-lowestHourReading
-
+        totalEquipHours = highestHourReadingToday-highestHourReadingYesterday
 
         #=========================================
         #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
@@ -1998,6 +2057,7 @@ try:
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+    
 
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
@@ -2014,7 +2074,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Connecting to the HCSS API, pulling all of our equipment hour data, and updating our database>')
+print('<Updating the "Master_Equipment_Timecard_Data" & "Equipment_Timecard_All_Data" Database Tables: Connecting to the HCSS API, pulling all of our equipment hour data, and updating our database tables>')
 print('<========================================================================================================================>')
 print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
@@ -2405,7 +2465,7 @@ except:
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 print('<========================================================================================================================>')
-print('<Updating the "Master_Equipment_Utilization_Data" Database>')
+print('<Updating the "Master_Equipment_Utilization_Data" Database Table: Using our "Master_Equipment_Timecard_Data" and "Master_Equipment_GPS_Data" database tables to perform our equipment utilization calcs>')
 print('<========================================================================================================================>')
 print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION

@@ -90,6 +90,25 @@ def get_lat_lng_bounds(lat, lng, radius_miles=3):
         "max_lng": lng + delta_lng,
     }
 
+#================================================================
+#Writing a function that will convert the HCSS API UTC date/time into a date that is in US central time: 
+from datetime import datetime
+from dateutil import tz
+
+def convert_utc_to_central(utc_date_str: str) -> str:
+    # Define UTC and Central Time zones
+    utc_zone = tz.tzutc()
+    central_zone = tz.gettz('America/Chicago')
+    
+    # Parse the input date string
+    utc_datetime = datetime.fromisoformat(utc_date_str)
+    
+    # Convert to Central Time
+    central_datetime = utc_datetime.astimezone(central_zone)
+    
+    # Return the date in YYYY-MM-DD format
+    return central_datetime.strftime('%Y-%m-%d')
+
 
 #================================================================
 #Writing a function that will return the most frequently occuring item an a list: 
@@ -395,370 +414,509 @@ print('SUCCESS')
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 
-#===============================================================================================================================================================
-#First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
+
+
+#==============================================================================================================================================================================================
+#Pulling the GPS data from the HCSS API and updating our "Equipment GPS All Data" database
 #region
 
-print('Creating a list of dates that we want to create our report for...')
-
-from datetime import datetime, timedelta
-import pytz
-
-# Define US Central Time timezone
-central_tz = pytz.timezone('America/Chicago')
-
-# Get current date in US Central Time
-current_date = datetime.now(central_tz).date()
-
-# Generate list of dates for the past 14 days (including today)
-dates = [(current_date - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
-
-
-print('SUCCESS')
-
-#endregion
-
-
-#===============================================================================================================================================================
-#Next, let's create a list of all GPS data for each piece of equipment/date included in this week:
-#region
-
-
-#==================================================================================
-#First, let's write a function that returns the day of the week when given a date. We only want to charge PTs on weekdays:
-from datetime import datetime
-
-def get_weekday_number(date_str: str) -> int:
-    """
-    Takes a date string in "YYYY-MM-DD" format and returns the day of the week as a number.
-    Monday = 0, Sunday = 6.
-    
-    :param date_str: Date string in "YYYY-MM-DD" format.
-    :return: Integer representing the day of the week (0 = Monday, 6 = Sunday).
-    """
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    return date_obj.weekday()
-
-# Example usage
-#print(get_weekday_number("2025-02-14"))  # Output: 4 (Friday)
-
-
-#==================================================================================
-#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
-
-#============================================
-#Adding equipment from our main asset list:
-MySheet = smart.Sheets.get_sheet('1336754816634756')
-
-chargeTypeDictionary = {}
-statusDictionary = {}
-
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[12].value
-
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
-
-#============================================
-#Adding equipemtn from our fleet list:
-MySheet = smart.Sheets.get_sheet('601782195539844')
-
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[7].value
-
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
-
-
-#==================================================================================
-#Next, create a list of fleet AND asset equipment that is charged at 8 hours that will be used to filter these results from our GPS data:
-gpsDataList = []
-idCheckList = [] #Will be used to check if an equipment ID is already in our list to filter from GPS entries:
-
-for i in range(len(dates)):
-    entryDate = dates[i]
-    weekdayNumber = get_weekday_number(entryDate)
-
-    
-    #We only want to include PTs if it is MON-FRI:
-    if weekdayNumber in [0, 1, 2, 3, 4]:
-        #============================================
-        #First, let's add in our smartsheet fleet assets:
-        MySheet = smart.Sheets.get_sheet('601782195539844')
-
-        smartSheetFleetInfoList = []
-
-        for MyRow in MySheet.rows:
-            #We only want to pull PTs from the fleeet list, so let's only add to the list if the charge type is 8HR/DAY AND the equipment is active:
-            chargeType = MyRow.cells[11].value
-            status = MyRow.cells[12].value
-
-            if chargeType=='8HR/DAY' and status=='Active':
-                fleetID = MyRow.cells[0].value
-                fleetDescription = MyRow.cells[2].value
-                assignedTo = MyRow.cells[8].value
-                    
-                #Rather than displaying the PT's location, we want to display who the PT is assigned to:
-                locationValue = 'PT Assigned To: '+assignedTo
-
-                #Updating our list:
-                gpsDataList.append([entryDate, fleetID, fleetDescription, 8, locationValue])
-
-                #Updating our check list:
-                idCheckList.append(fleetID)
-        
-        #============================================
-        #Next, let's add in our equipment assets:
-        filters = {'date': entryDate}
-        data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
-
-        for j in range(len(data)):
-            entryEquipID = data[j][2]
-            entryEquipDescription = data[j][3]
-            entryGPShours = data[j][4]
-            primaryLocation = data[j][5]
-
-            #Pulling the charge type and status using our dictionaries created above:
-            thisChargeType = chargeTypeDictionary[entryEquipID]
-            thisStatus = statusDictionary[entryEquipID]
-
-            #If this is an 8HR/DAY charge type and has an acitve status then we want to update our lists:
-            if thisChargeType=='8HR/DAY' and thisStatus=='Active':
-                gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, 8, primaryLocation])
-
-                idCheckList.append(entryEquipID)
-
-
-#==================================================================================
-#Next, create a list of values that includes GPS hours for ALL equipment we want to see our on our report:
-print('Pulling GPS equipment hour data & adding in PT data from "Master Fleet List" Smartsheet...')
-
-for i in range(len(dates)):
-    entryDate = dates[i]
-    weekdayNumber = get_weekday_number(entryDate)
-
-    #============================================
-    #First, let's pull all of our gps data and add it to a list: 
-    filters = {'date': entryDate}
-    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_GPS_Data", filters)
-
-    for j in range(len(data)):
-        entryEquipID = data[j][2]
-
-        #Important! To prevent duplicate entries for any assets with an "8HR/DAY" charge type filter them out here using your "idChecklist" created in the previous step:
-        if entryEquipID not in idCheckList:
-            entryEquipDescription = data[j][3]
-            entryGPShours = data[j][4]
-            primaryLocation = data[j][5]
-
-            gpsDataList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, primaryLocation])
-
-
-    
-print('SUCCESS')
-
-
-#endregion
-
-
-#===============================================================================================================================================================
-#Next, let's iterate through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list:
-#region
-
-
-#==================================================================================
-#First, let's build a project/project manager dictionary using our Project Info smartsheet!
-#Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
-MySheet = smart.Sheets.get_sheet('3259554229866372')
-
-projectManagerDictionary = {}
-projectManagerCityDictionary = {} #Let's also create a dictionary that stores the city/project manager if there isn't a project identified by our GPS data
-
-for MyRow in MySheet.rows:
-    #========================================
-    #Defining some initial values that will be pulled straight from the smartsheet: 
-    jobNum = MyRow.cells[2].value
-    projectManager = MyRow.cells[13].value
-    city = MyRow.cells[10].value
-    
-
-    #========================================
-    #Updating our dictionary tieing project numbers to project managers:
-    projectManagerDictionary[jobNum]=projectManager
-
-    #========================================
-    #Updating our dictionary tieing cities to project managers:
-    if city in projectManagerCityDictionary:
-        projectManagerCityDictionary[city]=projectManagerCityDictionary[city]+' OR '+projectManagerCityDictionary[city]
-    else:
-        projectManagerCityDictionary[city]=projectManager
-
-
-#==================================================================================
-#Next, let's iterate through our list of values from our GPS, perform our calcs, and update our list:
-equipmentUtilizationList = []
-
-for i in range(len(gpsDataList)):
-    #==================================================================================
-    #Defining our initial variables:
-    entryDate = gpsDataList[i][0]
-    entryEquipID = gpsDataList[i][1]
-    entryEquipDescription = gpsDataList[i][2]
-    entryGPShours = gpsDataList[i][3]
-    primaryLocation = gpsDataList[i][4]
-    if primaryLocation!=None:
-        jobNum = primaryLocation[0:5]
-    else:
-        jobNum = ''
-    
-    #========================================
-    #Converting our gps hour variable to a floating point number: 
-    if entryGPShours==None:
-            entryGPShours=0
-    else:
-        entryGPShours=float(entryGPShours)
-
-
-    #========================================
-    #Using our "chargeTypeDictionary" created above to assign a charge type:
-    #chargeTypeDictionary[entryEquipID]=chargeType
-    if entryEquipID in chargeTypeDictionary:
-        entryChargeType = chargeTypeDictionary[entryEquipID]
-    else:
-        entryChargeType = ''
-
-    #========================================
-    #If our charge type is "8HR/DAY", then we will want to change the equipment GPS hours to be 8:
-    if entryChargeType=="8HR/DAY":
-        entryGPShours=8
-
-    #========================================
-    #IMPORTANT! WE ONLY WANT TO INCLUDE ENTRIES IN OUR REPORT IF THEY HAVE GREATER THAN 0.5 HOURS OF GPS TIME && THEY DON'T HAVE A "None" CHARGE TYPE!
-    if entryChargeType!='None':
-        if entryGPShours>=0.5:
-
-            #========================================
-            #Using our dictionaries created above to define a variable for our project manager:
-            if jobNum in projectManagerDictionary:
-                projectManager=projectManagerDictionary[jobNum]
-            elif jobNum=='OUTSI':
-                city=extract_city(primaryLocation) #Using our function defined at the top of this list that pulls the city out of our "OUTSIDE OF GEOFENCE" entries
-                if city in projectManagerCityDictionary:
-                    projectManager=projectManagerCityDictionary[city]+'??? (Just a guess based on the City)'
-                else:
-                    projectManager='No PMs currently assigned to projects in this city'
-            else:
-                projectManager='No PM Found'
-
-            #If our equipment is an HT or DT, then we will want to assign Derek as the project manager due to the fact that these always move around!
-            if entryEquipID[0:2]=='HT' or entryEquipID[0:2]=='DT':
-                projectManager='Derek Dodson (Assigned to All HT/DT Equipment)'
-
-            #==================================================================================
-            #Pulling our Heavy Job equipment info for this date/equipment:
-            filters = {'date': entryDate, 'equipmentCode': entryEquipID}
-            data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Timecard_Data", filters)
-
-            #==================================================================================
-            #Iterating through our heavy job data, calculating the difference from the GPS data, and updating our list:
-
-            #=======================================
-            #If our database query returns a blank list, that means that there is no entry for this equipment in heavy job and we will want to set the hours equal to zero:
-            if data==[]:
-                heavyJobHours = 0
-
-                #Calculating our hour delta:
-                hourDelta = round(entryGPShours-heavyJobHours,2)
-
-                #Defining our variable for the foreman timecard
-                foreman = 'No Timecard Entry for This Equipment/Date'
-
-                #Updating our list:
-                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
-
-            #=======================================
-            #If a blank list is not returned, let's pull the actual hours and perform our calcs
-            else:
-                #If there are mutliple entries for this equipment, we will want to iterate through each and total the hours:
-                heavyJobHours = 0
-                foreman = ''
-
-                for j in range(len(data)):
-                    heavyJobHours = heavyJobHours+float(data[j][7])
-                    foreman = foreman+data[j][6]+', '
-
-                #Calculating our hour delta:
-                hourDelta = round(entryGPShours-heavyJobHours,2)
-                
-                #Updating our list:
-                equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, projectManager, foreman])
-
-
-#print(equipmentUtilizationList)
-
-#endregion
-
-#===============================================================================================================================================================
-#Next, let's update our databse table:
-#region
+print("Pulling the GPS data from the HCSS API and updating our Equipment GPS All Data database...")
+start_time = time.time()
 
 
 #============================================================================
-#First, let's delete any rows in this table that are in our list of dates for this period:
-for i in range(len(dates)):
-    entryDate = dates[i]
+#Connecting to the telematics endpoint of the HCSS API and creating a list of values to be used in updating our "Equipment GPS All Data" database:
+HCSS_API_ENDPOINT = "https://api.hcssapps.com/telematics/api/v1/equipment"
 
-    result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", "date", entryDate)
+#============================================================================
+#Listing any parameters here (typically won't use any, for some reason this has been giving me issues):
+query = {
+        # "jobId": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+        # "foremanId": APIID,
+        # "employeeId": APIID,
+        #"startDate": "2021-01-01T00:00:00Z",
+        #"endDate": endDate
+        # "modifiedSince": "2019-08-24T14:15:22Z",
+        # "cursor": "string",
+        # "limit": "1000000"
+}
+
+#============================================================================
+#Passing our token value generated above to our "HEADERS" variable:
+HEADERS = {
+"Authorization": "Bearer {}".format(token)
+}
+
+#============================================================================
+#Finally, let's generate store our response which includes all of our raw data to a variable:
+response = requests.get(HCSS_API_ENDPOINT, headers=HEADERS, params=query)
+
+#============================================================================
+#Creating a dictionary of values that converts the equipment IDs shown in our telematics system to the standard IDs defined in our "Master Equipment List" smartsheet:
+
+MySheet = smart.Sheets.get_sheet('1336754816634756')
+
+telematicEquipIDconversionDict = {}
+
+for MyRow in MySheet.rows:
+    telematicEquipID = MyRow.cells[13].value
+    masterListEquipID = MyRow.cells[0].value
+
+    if telematicEquipID!=None:
+        telematicEquipIDconversionDict[telematicEquipID]=masterListEquipID
+
+
+#============================================================================
+#A 200 response status code means that the request was successful! Thusly if this repsonse is returned, we will run our script:
+if response.status_code == 200:
+    data = response.json()
+
+    results = data.get('results')
+
+    equipmentInfoList = []
+
+    for i in range(len(results)):
+        equipmentHCSSAPIid = results[i].get('id')
+        equipID = results[i].get('code')
+        equipDescription = results[i].get('description')
+        fuelUom = results[i].get('fuelUom')
+        lastBearing = results[i].get('lastBearing')
+        lastLatitude = results[i].get('lastLatitude')
+        lastLongitude = results[i].get('lastLongitude')
+        lastLocationDateTime = results[i].get('lastLocationDateTime')
+        lastHourMeterReadingInSeconds = results[i].get('lastHourMeterReadingInSeconds')
+        lastHourMeterReadingInHours = results[i].get('lastHourMeterReadingInHours')
+        lastHourReadingDateTime = results[i].get('lastHourMeterReadingDateTime')
+        lastEngineStatus = results[i].get('lastEngineStatus')
+        lastEngineStatusDateTime = results[i].get('lastEngineStatusDateTime')
+        
+        #===================
+        #For some dumb reason, when SS-08 got entered into telematics it had a space added at the end. Correcting here:
+        if equipID=='SS-08 ':
+            equipID='SS-08'
+
+        #===================
+        #Converting equipment IDs to our standard formatting as is listed in the "Equipment Master List" smartsheet:
+        if equipID in telematicEquipIDconversionDict:
+            equipID=telematicEquipIDconversionDict[equipID]
+
+        #===================
+        #Updating our list:
+        equipmentInfoList.append([equipmentHCSSAPIid, equipID, equipDescription, fuelUom, lastBearing, lastLatitude, lastLongitude, lastLocationDateTime, lastHourMeterReadingInSeconds, lastHourMeterReadingInHours, lastHourReadingDateTime, lastEngineStatus, lastEngineStatusDateTime])
+
+#============================================================================
+#If there wasn't a 200 code received, then there was an error and we will want to break this portion of the script and print out an error message:
+else:
+    #=======================================
+    #Printing out our error message followed by some helpful notes on the response code:
+    print('HCSS API ERROR: {}'.format(response.status_code))
+    print('Response Code Text: {}'.format(response.text))
+    print('Request Error Code Notes:')
+    print('    > 400/Bad Request: The most common reason for receiving a a Bad Request (HTTP 400) is sending invalid input.  (e.g., trying to create a cost code on a job that does not exist).')
+    print('    > 401/Unauthorized: Most of the time, this error code is caused by a missing token. ')
+    print('    > 403/Forbidden: The HCSS API returns Forbidden (HTTP 403) if an authorization token lacks the required scope.  APIs typically have at least two scopes: one providing read access, and one providing read+write.')
+
+    #=======================================
+    #Using the "raise" method to throw off an error that will break the try/except statement that this script is running in. We don't want to delete the existing database data if we don't get data from our API!
+    raise ValueError("There was an error and no data was retrieved from the HCSS API!")
+
+#============================================================================
+#Creating a variable for "today" that is in US Central time because haevy job uses UTC which can have wrong date late in the day!
+from datetime import datetime
+import pytz
+
+def get_central_time():
+    central_tz = pytz.timezone('America/Chicago')  # US Central Time Zone
+    central_time = datetime.now(central_tz)  # Get current time in Central Time
+    return central_time.strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
+
+todayCentral=str(get_central_time())[0:10]
+
+#============================================================================
+#Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
+
+#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
+data = fetch_data_from_table("Equipment_GPS_All_Data")
+
+rowcount = len(data)+1
+
+
+#============================================================================
+#Function to insert data into the "Equipment_GPS_All_Data" table
+def insert_data(data: dict):
+    response = supabase_client.table('Equipment_GPS_All_Data').insert(data).execute()
+    return response
+
+
+#============================================================================
+#Inserting the data into our Supabase database table:
+for i in range(len(equipmentInfoList)):
+
+    #===========================================================
+    #Using our function defined at the top of this script to convert the "lastHourReadingDateTime" from our API data into a date that is in US central time:
+    if equipmentInfoList[i][10]!=None:
+        central_date = convert_utc_to_central(str(equipmentInfoList[i][10]))
+    else:
+        central_date = 'None'
+
+    #===========================================================
+    #If our meter reading date is not for today, then we don't want to add it to our database! This API call returns the last GPS reading for EVERY SINGLE piece of equipment that we have ever owned!
+    if central_date==todayCentral:
+        #===========================================================
+        #Updating our dictionary:
+        data_to_insert = {
+            'id':rowcount,
+            'date':central_date,
+            'equipmentHCSSAPIid':equipmentInfoList[i][0],
+            'equipID':equipmentInfoList[i][1],
+            'equipDescription':equipmentInfoList[i][2],
+            'fuelUom':equipmentInfoList[i][3],
+            'lastBearing':equipmentInfoList[i][4],
+            'lastLatitude':equipmentInfoList[i][5],
+            'lastLongitude':equipmentInfoList[i][6],
+            'lastLocationDateTime':equipmentInfoList[i][7],
+            'lastHourMeterReadingInSeconds':equipmentInfoList[i][8],
+            'lastHourMeterReadingInHours':equipmentInfoList[i][9],
+            'lastHourReadingDateTime':equipmentInfoList[i][10],
+            'lastEngineStatus':equipmentInfoList[i][11],
+            'lastEngineStatusDateTime':equipmentInfoList[i][12]
+        }
+
+        rowcount=rowcount+1
+
+        #===========================================================
+        #Using the "insert_data" function defined at the top of this script
+        insert_response = insert_data(data_to_insert)
+
+
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today:
+#region
+
+print("Next, let's perform our calculations for the location/hours that each piece of equipment ran has run so far today...")
+start_time = time.time()
+
+#=========================================================================================
+#Creating a variable for today's date in UTC:
+from datetime import datetime
+
+def get_current_datetime():
+    now = datetime.utcnow()
+    formatted_datetime = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return formatted_datetime
+
+today = str(get_current_datetime())[0:10]
+
+#=========================================================================================
+#Creating a variable for yesterday's date in US central time as a string in the format "YYYY-MM-DD":
+from datetime import datetime, timedelta
+import pytz
+
+def get_yesterdays_date_central():
+    central_tz = pytz.timezone('America/Chicago')
+    now_central = datetime.now(central_tz)
+    yesterday = now_central - timedelta(days=1)
+    return yesterday.strftime('%Y-%m-%d')
+
+
+yesterdayCentral = get_yesterdays_date_central()
+
+#=========================================================================================
+#First, let's make a list of all equipment entries currently in our "Equipment_GPS_All_Data" table for TODAY'S DATE:
+equipmentInfoTodayList = []
+
+#=========================================================================================
+#Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this date:
+# filters = {"column1": "value1", "column2": "value2"}
+# results = fetch_filtered_data(supabase_url, supabase_key, table_name, filters)
+filters = {'date': todayCentral}
+data = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+#=========================================================================================
+#Iterating through our list of database values and updating our dictionary: 
+for i in range(len(data)):
+    entryEquipID = data[i][2]
+    equipDescr = data[i][3]
+
+    #Making sure to not add duplicate equipment IDs to our list: 
+    if [entryEquipID, equipDescr] not in equipmentInfoTodayList:
+        equipmentInfoTodayList.append([entryEquipID, equipDescr])
+
+
+#=========================================================================================
+#Accessing our project latitude/longitude coordinates by pulling from our "Master_Project_Information" table:
+projectData = fetch_data_from_table("Master_Project_Information")
+
+projectCoordinateDict = {}
+
+for j in range(len(projectData)):
+    jobStatus = projectData[j][4]
+
+    #We only want to update our dictionary for active projects
+    if jobStatus=='active':
+        jobNum = projectData[j][1]
+        jobDesc = projectData[j][2]
+    
+        if projectData[j][5]!='None':
+            lat = float(projectData[j][5])
+        else:
+            lat = 0
+        if projectData[j][6]!='None':
+            long = float(projectData[j][6])
+        else:
+            long = 0
+
+        if projectData[j][18]!=None:
+            jobRadius = float(projectData[j][18])
+        else:
+            jobRadius = 0
+
+        #Calculating our lat/long max/min ranges using our function defined above: 
+        coordinateMaxMins = get_lat_lng_bounds(lat, long, jobRadius) #Using our "get_lat_lng_bounds" function defined at the top of this script
+        min_lat = coordinateMaxMins.get('min_lat')
+        max_lat = coordinateMaxMins.get('max_lat')
+        min_lng = coordinateMaxMins.get('min_lng')
+        max_lng = coordinateMaxMins.get('max_lng')
+
+        projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
+
+
+#=========================================================================================
+#Next, let's iterate through our list created above and calculate the total hours and location for each:
+equipmentInfoDictionary = {}
+
+for i in range(len(equipmentInfoTodayList)):
+    entryEquipID = equipmentInfoTodayList[i][0]
+    equipDescript = equipmentInfoTodayList[i][1]
+
+    #=========================================
+    #Pulling all of the equipment data from our "Equipment_GPS_All_Data" database table for this piece of equipment TODAY and determining the highest meter reading for this equipment TODAY:
+
+    #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID today:
+    filters = {"equipID": entryEquipID, 'date': todayCentral}
+    results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+    highestHourReadingToday = 0
+    lowestHourReadingToday = 5000000 #Setting this initial value to be an absurdly high number so that our first real value overwrites the initial value
+
+    locationList = []
+
+    for j in range(len(results)):
+        #Calculating the min/max hour readings:
+        if results[j][10]!=None:
+            entryHourReading = float(results[j][10])
+        else:
+            entryHourReading = 0
+
+        if entryHourReading>highestHourReadingToday:
+            highestHourReadingToday=entryHourReading
+        if entryHourReading<lowestHourReadingToday:
+            lowestHourReadingToday=entryHourReading
+
+        #Updating our location GPS coordinate list for this equipment/date:
+        thisLat = results[j][6]
+        thisLong = results[j][7]
+
+        locationList.append([thisLat, thisLong])
+    
+
+    #=========================================
+    #Calculating what the highest meter reading was for this piece of equipment YESTERDAY:
+
+    #===================
+    #Using our "fetch_filtered_data" function defined at the top of this script to pull all entries for this equip ID today:
+    filters = {"equipID": entryEquipID, 'date': yesterdayCentral}
+    results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+    highestHourReadingYesterday = 0
+
+    #===================
+    #If there was a meter reading for this equipment yesterday, then we will use this to define our value for our highest meter reading yesterday: 
+    if results!=[]:
+        for j in range(len(results)):
+            #Calculating the min/max hour readings:
+            if results[j][10]!=None:
+                entryHourReading = float(results[j][10])
+            else:
+                entryHourReading = 0
+
+            if entryHourReading>highestHourReadingYesterday:
+                highestHourReadingYesterday=entryHourReading
+
+    #===================
+    #If there wasn't a meter reading yesterday, then we will want to go through our "Equipment_GPS_All_Data" database for all dates and find the highest reading for a previous date:
+    else:
+        filters = {"equipID": entryEquipID}
+        results = fetch_filtered_data(supabase_url, supabase_key, "Equipment_GPS_All_Data", filters)
+
+        for j in range(len(results)):
+            queryDate = results[j][12]
+
+            #Important! We don't want to consider today's date here, so let's filter it out of our calculation:
+            if queryDate!=todayCentral:
+                #Calculating the min/max hour readings:
+                if results[j][10]!=None:
+                    entryHourReading = float(results[j][10])
+                else:
+                    entryHourReading = 0
+
+                if entryHourReading>highestHourReadingYesterday:
+                    highestHourReadingYesterday=entryHourReading
+
+        #If there aren't any meter readings for this equipment that aren't for today, then this may be a new piece of equipment. If so, we want to set the highest meter reading value for yesterday to be the lowest for today:
+        highestHourReadingYesterday=lowestHourReadingToday
+
+
+    #=========================================
+    #Using our min/max hour readings to calculate the total hours that this equipment ran on this date:
+    totalEquipHours = highestHourReadingToday-highestHourReadingYesterday
+
+
+
+
+
+
+
+    print(entryEquipID)
+    print(equipDescript)
+    print('Total Equipment Hours = {}'.format(totalEquipHours))
+    print('Highest Meter Reading TODAY = {}'.format(highestHourReadingToday))
+    print('Highest Meter Reading YESTERDAY = {}'.format(highestHourReadingYesterday))
+    print('====================================================')
+
+
+
+    #=========================================
+    #Iterating through our list of GPS coordinates, calculating which project each coordinate entry belongs to, and adding each project value to a list: 
+    equipmentProjectList = []
+
+    for j in range(len(locationList)):
+        if locationList[j][0]!=None and locationList[j][1]!=None:
+            entryLat = float(locationList[j][0])
+            entryLong = float(locationList[j][1])
+        else:
+            entryLat = 0
+            entryLong = 0
+
+        #projectCoordinateDict[(jobNum, jobDesc)]=[min_lat, max_lat, min_lng, max_lng]
+        for key,values in projectCoordinateDict.items():
+            thisJobNum = key[0]
+            thisJobDesc = key[1]
+            thisJobValue = thisJobNum+'-'+thisJobDesc
+
+            min_lat = values[0]
+            max_lat = values[1]
+            min_lng = values[2]
+            max_lng = values[3]
+
+            #If the longitude/latitude are within the ranges of this project, then we will add to our list:
+            if entryLat>=min_lat and entryLat<=max_lat:
+                if entryLong>=min_lng and entryLong<=max_lng:
+                    equipmentProjectList.append(thisJobValue)
+
+    
+    
+    #=========================================
+    #Using our "most_frequent" function defined at the top of this script to pull the most frequently occuring project from our "equipmentProjectList":
+    project = most_frequent(equipmentProjectList)
+
+
+    #=========================================
+    #If our function above does not return a project, then let's display the most frequent address of the equipment using our GPS coordinates
+    if project==None:
+        #Creating a list of all addresses
+        addressList = []
+
+        for j in range(len(locationList)):
+            if locationList[j][0]!=None and locationList[j][1]!=None:
+                entryLat = float(locationList[j][0])
+                entryLong = float(locationList[j][1])
+            else:
+                entryLat = 0
+                entryLong = 0
+
+            address = get_address_from_coordinates(entryLat, entryLong) #using  our "get_address_from_coordinates" function defined at the top of this script
+            
+            #Adding our GPS coordinates to our address for reference in other scripts:
+            address=address+' ('+str(entryLat)+', '+str(entryLong)+')'
+
+            #Updating our address list:
+            addressList.append(address)
+
+        #Definng our project variable as the most common address found in our address list:
+        project = most_frequent(addressList)
+        project = 'OUTSIDE OF GEOFENCES! GPS Coordinate Address: '+str(project)
+
+
+    #=========================================
+    #Updating our dictionary of values to be entered into our database:
+    equipmentInfoDictionary[(entryEquipID, todayCentral, equipDescript)] = [round(totalEquipHours,2), project]
+
+
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
+#endregion
+
+
+#==============================================================================================================================================================================================
+#Next, let's enter the values above into our "Master Equipment GPS Data" database
+#region
+
+print("Next, let's enter the values above into our Master Equipment GPS Data database...")
+start_time = time.time()
+
+#============================================================================
+#First, let's delete any rows in this table that are for our current date
+result = delete_rows_by_value(supabase_url, supabase_key, "Master_Equipment_GPS_Data", "date", todayCentral)
+#print(result)
 
 
 #============================================================================
 #Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
 
 #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Master_Equipment_Utilization_Data")
+data = fetch_data_from_table("Master_Equipment_GPS_Data")
 
 rowcount = len(data)+1
+
 
 #============================================================================
 #Function to insert data into the "Master_Equipment_GPS_Data" table
 def insert_data(data: dict):
-    response = supabase_client.table('Master_Equipment_Utilization_Data').insert(data).execute()
+    response = supabase_client.table('Master_Equipment_GPS_Data').insert(data).execute()
     return response
 
 #============================================================================
 #Iterating through our dictionary items created above: 
-for i in range(len(equipmentUtilizationList)):
-    entryDate = equipmentUtilizationList[i][0]
-    entryEquipID = equipmentUtilizationList[i][1]
-    entryEquipDescription = equipmentUtilizationList[i][2]
-    entryGPShours = equipmentUtilizationList[i][3]
-    heavyJobHours = equipmentUtilizationList[i][4]
-    hourDelta = equipmentUtilizationList[i][5]
-    primaryLocation = equipmentUtilizationList[i][6]
-    projectManager = equipmentUtilizationList[i][7]
-    foreman = equipmentUtilizationList[i][8]
+for key,values in equipmentInfoDictionary.items():
+    equipID = key[0]
+    equipDesc = key[2]
+    todayDate = key[1]
+    totalEquipHours = values[0]
+    projectLocation = values[1]
 
     
     #============================================================================
     #Inserting the data into our Supabase database table:
     data_to_insert = {
         'id':rowcount,
-        'date':entryDate,
-        'equipID':entryEquipID,
-        'equipDescrip':entryEquipDescription,
-        'gpsHours':entryGPShours,
-        'heavyJobHours':heavyJobHours,
-        'hourDelta':hourDelta,
-        'dollarRate':'0',
-        'dollarDelta':'0',
-        'equipmentLocation':primaryLocation,
-        'latestSSDeliveryForeman':'',
-        'foreman':foreman, 
-        'projectManager':projectManager
+        'date':todayCentral,
+        'equipID':equipID,
+        'equipDesc':equipDesc,
+        'totalGPShours':totalEquipHours,
+        'primaryLocation':projectLocation
 
     }
 
@@ -769,218 +927,18 @@ for i in range(len(equipmentUtilizationList)):
     insert_response = insert_data(data_to_insert)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 #endregion
 
 
-#===============================================================================================================================================================
-#Next, let's create our excel report that details the hour differences:
-#region
-
-#ITEMS TO ADD FOR UPDATE!
-#> ADD CONDITIONAL FORMATTING FOR CLORING CELLS, NOT THAT NASTY RED
-#> ONLY HIGHLIGHT RED HOUR DIFFERENCES GREATER THAN 0.25? MAYBE SEE HOW ACCURATE YOUR SYSTEM GPS DATA IS FIRST
-#> HAVE THIS REPORT FEED FROM A DATABASE TABLE OF EQUIPMENT UTILIZATION? ADD THIS SCRIPT TO THE HOURLY UPDATER? YES!!!!
-#> NEED TO CREATE A SMARTSHEET FOR WORK TRUCKS (INCLUDE TOLL TAG ID), AND ADD THAT AS THE LOCATION FOR PTS!
-
-#==================================================================================
-#Creating our workbook/sheet objects:
-wb = openpyxl.Workbook()
-wb.save('EquipmentUtilizationReport.xlsx')
-
-#Creating a sheet object: 
-sheet = wb['Sheet']
-
-#==================================================================================
-#Clearing any previous values just in case our current report is shorter than a previous one:
-row=1
-for i in range(0,3000):
-    sheet['A'+str(row)].value = ''
-    sheet['B'+str(row)].value = ''
-    sheet['C'+str(row)].value = ''
-    sheet['D'+str(row)].value = ''
-    sheet['E'+str(row)].value = ''
-    sheet['F'+str(row)].value = ''
-    sheet['G'+str(row)].value = ''
-    sheet['H'+str(row)].value = ''
-    sheet['I'+str(row)].value = ''
-
-    row=row+1
-
-
-#==================================================================================   
-#Defining our report column headers and adding bold font as well as an underlined top row:
-
-sheet['A1'].value = 'Date'
-sheet['A1'].font = Font(bold=True)
-sheet['B1'].value = 'Equipment ID'
-sheet['B1'].font = Font(bold=True)
-sheet['C1'].value = 'Equipment Description'
-sheet['C1'].font = Font(bold=True)
-sheet['D1'].value = 'GPS Hours'
-sheet['D1'].font = Font(bold=True)
-sheet['E1'].value = 'Heavy Job Hours'
-sheet['E1'].font = Font(bold=True)
-sheet['F1'].value = 'Delta'
-sheet['F1'].font = Font(bold=True)
-sheet['G1'].value = 'Primary Location'
-sheet['G1'].font = Font(bold=True)
-sheet['H1'].value = 'Project Manager'
-sheet['H1'].font = Font(bold=True)
-sheet['I1'].value = 'Foreman'
-sheet['I1'].font = Font(bold=True)
-
-#==================================================================================   
-#Freezing the top row of our report and adding a double border to the bottom:
-
-#Freezing the top row at cell C2 so that the date, equipID, and equip desc are frozen:
-sheet.freeze_panes = "D2"
-
-#Define a double border for the bottom
-double_border = Border(bottom=Side(style='double'))
-
-#Apply the border to each cell in the first row
-for cell in sheet[1]:  # ws[1] selects the first row
-    cell.border = double_border
-
-
-#==================================================================================   
-#Adding conditional formatting that highlights red any cells where the GPS hours don't match the HJ hours:
-
-#Define the conditional formatting fill (red background)
-red_fill = PatternFill(start_color="FF9999", end_color="FF9999", fill_type="solid")
-
-#Apply conditional formatting to a specified column (e.g., Column C)
-column_to_format = "F"  # Change this to your desired column
-
-sheet.conditional_formatting.add(
-    f"{column_to_format}2:{column_to_format}10000",  # Applies from row 2 to 100
-    CellIsRule(operator="greaterThan", formula=["0.25"], fill=red_fill)
-)
-
-sheet.conditional_formatting.add(
-    f"{column_to_format}2:{column_to_format}10000",
-    CellIsRule(operator="lessThan", formula=["-0.25"], fill=red_fill)
-)
-
-
-#==================================================================================
-#Populating the cells in our excel spreadsheet: 
-row=2
-
-#equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
-for i in range(len(equipmentUtilizationList)):
-    sheet['A'+str(row)].value = equipmentUtilizationList[i][0]
-    sheet['B'+str(row)].value = equipmentUtilizationList[i][1]
-    sheet['C'+str(row)].value = equipmentUtilizationList[i][2]
-    sheet['D'+str(row)].value = equipmentUtilizationList[i][3]
-    sheet['E'+str(row)].value = equipmentUtilizationList[i][4]
-    sheet['F'+str(row)].value = equipmentUtilizationList[i][5]
-    sheet['G'+str(row)].value = equipmentUtilizationList[i][6]
-    sheet['H'+str(row)].value = equipmentUtilizationList[i][7]
-    sheet['I'+str(row)].value = equipmentUtilizationList[i][8]
-
-    row=row+1
-
-
-
-#==================================================================================
-#Finally, let's save the workbook:
-
-print(equipmentUtilizationList)
-
-wb.save('EquipmentUtilizationReport.xlsx')
-
-
-#endregion
-
-
-#===============================================================================================================================================================
-#Finally, sending our email:
-#region
-
-print('Generating email and sending to relevant DDM employees...')
-
-
-#==================================================================================
-#First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
-startDate = dates[0]
-endDate = dates[-1]
-
-
-
-#==================================================================================
-#Next, building the email:
-import smtplib
-from email.message import EmailMessage
-
-conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
-#the ehlo function actually connects you to the server
-conn.ehlo()
-#starting the tls encryption to protect our password
-conn.starttls()
-#now that we are connected, let's login
-conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
-
-newMessage = EmailMessage()    #creating an object of EmailMessage class
-newMessage['Subject'] = "Equipment Hour Correction Audit for {} through {}".format(startDate, endDate) #Defining email subject
-newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
-#newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
-newMessage['To'] = 'collin@ddmcc.net, pyramidconstructionsupply@outlook.com'  #Defining reciever email
-
-#Now let's build the string to be added to our email message!
-emailcontentstring = 'Hello DDM Team,\n\nPlease see attached for the updated equipment hour audit report for {} through {}. Please make any and all listed corrections as soon as possible.\n\nThis is an automated email, so any direct replies may go unread. If you have any questions, please hit "Reply All" or make sure that Derek, Blake, and Collin are included on your email response.'.format(startDate, endDate)
-
-newMessage.set_content(emailcontentstring)
-
-
-#==================================================================================
-#Finally, attaching our excel report and sending this email
-
-#Converting the excel file into binary format so that we can attach it to our email:
-def convert_into_binary(file_path):
-    with open(file_path, 'rb') as file:
-        binary = file.read()
-    return binary
-
-excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
-
-#Adding the excel report as an attachment:
-newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit.xlsx')
-
-#Sending the email:
-conn.send_message(newMessage)
-
-#When you're done just call the quit method to end the connection
-conn.quit()
-
-
-print('SUCCESS')
-
-
-#endregion
+#Printing out the code block runtime to the console: 
+print('<SUCCESS>')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 
