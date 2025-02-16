@@ -2908,22 +2908,32 @@ print('<========================================================================
 print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
+
 #==============================================================================================================================================================================================
-#Finally, updating our "Report_Status_Tracking" database table with an entry indicating that the "Equipment Utilization Report" is ready to send now that this script has run successfully:
+#FIRST, let's delete all of the existing entries in the "Report_Status_Tracking" as we are about to overwrite them in this section of the script:
 #region
 
 #============================================================================
 #First, let's delete any rows in this table that are for our current date
-result = delete_rows_by_value(supabase_url, supabase_key, "Report_Status_Tracking", "reportName", "equipmentUtilizationReport")
-
+def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+    # Create a Supabase client
+    supabase: Client = create_client(supabase_url, supabase_key)
+                                
+    # Truncate the specified table
+    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                
+truncate_table(supabase_url, supabase_key, "Report_Status_Tracking")
 
 #============================================================================
-#Next, let's calculate what the starting ID value should be so we don't run into any primary key database issues:
+#Defining our rowcount value to be 1. This wil be added to for each section of this script:
+rowcount=1
 
-#Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
-data = fetch_data_from_table("Report_Status_Tracking")
+#endregion
 
-rowcount = len(data)+1
+
+#==============================================================================================================================================================================================
+#Upating the "Equipment Utilization Report" status in our "Report_Status_Tracking" database table:
+#region
 
 
 #============================================================================
@@ -2968,11 +2978,66 @@ data_to_insert = {
 #Using the "insert_data" function defined at the top of this script
 insert_response = insert_data(data_to_insert)
 
+rowcount=rowcount+1
 
 #endregion
 
 
+#==============================================================================================================================================================================================
+#Upating the "Weekly Paperwork Report" status in our "Report_Status_Tracking" database table:
+#region
 
+#============================================================================
+#Determining the report status for this report using the variables defined throughout this script:
+
+#==============================
+#If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
+# if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
+#     currentStatus='Ready To Send'
+#     errorDescription='None'
+
+#==============================
+#If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
+# else:
+#     currentStatus='NOT Ready To Send'
+
+#     errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
+
+
+#CHANGE THIS BLOCK OF CODE ONCE YOU ACTUALLY ARE READY FOR THIS REPORT TO START SENDING!
+currentStatus='Ready To Send'
+errorDescription='None'
+
+
+#============================================================================
+#Finally, let's update our database:
+
+#==============================
+#Function to insert data into the "Master_Equipment_GPS_Data" table
+def insert_data(data: dict):
+    response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
+    return response
+
+
+#==============================
+#Inserting the data into our Supabase database table:
+data_to_insert = {
+    'id':rowcount,
+    'reportName':'weeklyPaperworkReport',
+    'currentStatus':currentStatus,
+    'errorDescription':errorDescription,
+    'errorDate':todayCentral
+
+}
+
+#==============================
+#Using the "insert_data" function defined at the top of this script
+insert_response = insert_data(data_to_insert)
+
+rowcount=rowcount+1
+
+
+#endregion
 
 
 #endregion

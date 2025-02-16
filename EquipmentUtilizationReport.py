@@ -395,284 +395,359 @@ print('SUCCESS')
 #=====================================================================================================================================================================================================================================================================================================================
 #=====================================================================================================================================================================================================================================================================================================================
 
+#We only want to run this script if the report status in the "Report_Status_Tracking" is "Ready to Send":
+filters = {'reportName': "equipmentUtilizationReport"}
+data = fetch_filtered_data(supabase_url, supabase_key, "Report_Status_Tracking", filters)
 
+currentStatus = data[0][2]
+errorDescription = data[0][3]
 
+#If our current status is "Ready to Send", then we will execute this script and send our email:
+if currentStatus=='Ready To Send':
 
+    #===============================================================================================================================================================
+    #First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
+    #region
 
+    print('Creating a list of dates that we want to create our report for...')
 
+    from datetime import datetime, timedelta
 
+    def generate_week_dates():
+        today = datetime.today()
+        if today.weekday() == 0:  # Check if today is Monday
+            monday_prior = today - timedelta(days=7)  # Get the Monday of the previous week
+        else:
+            monday_prior = today - timedelta(days=today.weekday())  # Get the most recent Monday
+        
+        week_dates = [(monday_prior + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+        return week_dates
 
 
+    dates = generate_week_dates()
 
-#===============================================================================================================================================================
-#First, let's create a list of all dates that we want to generate our report for. This list will always include all dates from Monday-Sunday of the current week, or if it is Monday it will generate a list of all dates for the prior week Mon-Sun:
-#region
+    print('SUCCESS')
+    #endregion
 
-print('Creating a list of dates that we want to create our report for...')
 
-from datetime import datetime, timedelta
+    #===============================================================================================================================================================
+    #Next, let's pull all of the the equipment utilization data from our "Master_Equipment_Utilization_Data" database and save it to a list of values to populate our excel report:
+    #region
 
-def generate_week_dates():
-    today = datetime.today()
-    if today.weekday() == 0:  # Check if today is Monday
-        monday_prior = today - timedelta(days=7)  # Get the Monday of the previous week
-    else:
-        monday_prior = today - timedelta(days=today.weekday())  # Get the most recent Monday
-    
-    week_dates = [(monday_prior + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
-    return week_dates
+    #==================================================================================
+    #Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
 
+    #============================================
+    #Adding equipment from our main asset list:
+    MySheet = smart.Sheets.get_sheet('1336754816634756')
 
-dates = generate_week_dates()
+    chargeTypeDictionary = {}
+    statusDictionary = {}
 
-print('SUCCESS')
-#endregion
+    for MyRow in MySheet.rows: 
+        entryEquipID = MyRow.cells[0].value
+        chargeType = MyRow.cells[11].value
+        entryStatus = MyRow.cells[12].value
 
+        chargeTypeDictionary[entryEquipID]=chargeType
+        statusDictionary[entryEquipID]=entryStatus
 
-#===============================================================================================================================================================
-#Next, let's pull all of the the equipment utilization data from our "Master_Equipment_Utilization_Data" database and save it to a list of values to populate our excel report:
-#region
+    #============================================
+    #Adding equipemtn from our fleet list:
+    MySheet = smart.Sheets.get_sheet('601782195539844')
 
-#==================================================================================
-#Creating a dictionary of all charge types for each pieced of equipment using our "Master Equipment List" smartsheet:
+    for MyRow in MySheet.rows: 
+        entryEquipID = MyRow.cells[0].value
+        chargeType = MyRow.cells[11].value
+        entryStatus = MyRow.cells[7].value
 
-#============================================
-#Adding equipment from our main asset list:
-MySheet = smart.Sheets.get_sheet('1336754816634756')
+        chargeTypeDictionary[entryEquipID]=chargeType
+        statusDictionary[entryEquipID]=entryStatus
 
-chargeTypeDictionary = {}
-statusDictionary = {}
 
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[12].value
+    #==================================================================================
+    #Compiling all of the data for each date into a single list:
+    equipmentUtilizationList = []
 
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
 
-#============================================
-#Adding equipemtn from our fleet list:
-MySheet = smart.Sheets.get_sheet('601782195539844')
+    for i in range(len(dates)):
+        entryDate = dates[i]
 
-for MyRow in MySheet.rows: 
-    entryEquipID = MyRow.cells[0].value
-    chargeType = MyRow.cells[11].value
-    entryStatus = MyRow.cells[7].value
+        #Pulling our data from our database:
+        filters = {'date': entryDate}
+        data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", filters)
 
-    chargeTypeDictionary[entryEquipID]=chargeType
-    statusDictionary[entryEquipID]=entryStatus
+        for j in range(len(data)):
+            entryEquipID = data[j][2]
+            entryEquipDescription = data[j][3]
+            entryGPShours = data[j][4]
+            heavyJobHours = data[j][5]
+            hourDelta = data[j][6]
+            primaryLocation = data[j][9]
+            projectManager = data[j][12]
+            foreman = data[j][11]
 
 
-#==================================================================================
-#Compiling all of the data for each date into a single list:
-equipmentUtilizationList = []
+            #Updating our list:
+            equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, heavyJobHours, hourDelta, primaryLocation, projectManager, foreman])
 
 
-for i in range(len(dates)):
-    entryDate = dates[i]
 
-    #Pulling our data from our database:
-    filters = {'date': entryDate}
-    data = fetch_filtered_data(supabase_url, supabase_key, "Master_Equipment_Utilization_Data", filters)
+    #endregion
 
-    for j in range(len(data)):
-        entryEquipID = data[j][2]
-        entryEquipDescription = data[j][3]
-        entryGPShours = data[j][4]
-        heavyJobHours = data[j][5]
-        hourDelta = data[j][6]
-        primaryLocation = data[j][9]
-        projectManager = data[j][12]
-        foreman = data[j][11]
 
+    #===============================================================================================================================================================
+    #Next, let's create our excel report that details the hour differences:
+    #region
+
+    #ITEMS TO ADD FOR UPDATE!
+    #> ONLY HIGHLIGHT RED HOUR DIFFERENCES GREATER THAN 0.25? MAYBE SEE HOW ACCURATE YOUR SYSTEM GPS DATA IS FIRST
+
+    #==================================================================================
+    #Creating our workbook/sheet objects:
+    wb = openpyxl.Workbook()
+    wb.save('EquipmentUtilizationReport.xlsx')
+
+    #Creating a sheet object: 
+    sheet = wb['Sheet']
+
+    #==================================================================================
+    #Clearing any previous values just in case our current report is shorter than a previous one:
+    row=1
+    for i in range(0,3000):
+        sheet['A'+str(row)].value = ''
+        sheet['B'+str(row)].value = ''
+        sheet['C'+str(row)].value = ''
+        sheet['D'+str(row)].value = ''
+        sheet['E'+str(row)].value = ''
+        sheet['F'+str(row)].value = ''
+        sheet['G'+str(row)].value = ''
+        sheet['H'+str(row)].value = ''
+        sheet['I'+str(row)].value = ''
 
-        #Updating our list:
-        equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, entryGPShours, heavyJobHours, hourDelta, primaryLocation, projectManager, foreman])
+        row=row+1
 
 
+    #==================================================================================   
+    #Defining our report column headers and adding bold font as well as an underlined top row:
 
-#endregion
+    sheet['A1'].value = 'Date'
+    sheet['A1'].font = Font(bold=True)
+    sheet['B1'].value = 'Equipment ID'
+    sheet['B1'].font = Font(bold=True)
+    sheet['C1'].value = 'Equipment Description'
+    sheet['C1'].font = Font(bold=True)
+    sheet['D1'].value = 'GPS Hours'
+    sheet['D1'].font = Font(bold=True)
+    sheet['E1'].value = 'Heavy Job Hours'
+    sheet['E1'].font = Font(bold=True)
+    sheet['F1'].value = 'Delta'
+    sheet['F1'].font = Font(bold=True)
+    sheet['G1'].value = 'Primary Location'
+    sheet['G1'].font = Font(bold=True)
+    sheet['H1'].value = 'Project Manager'
+    sheet['H1'].font = Font(bold=True)
+    sheet['I1'].value = 'Foreman'
+    sheet['I1'].font = Font(bold=True)
 
+    #==================================================================================   
+    #Freezing the top row of our report and adding a double border to the bottom:
 
-#===============================================================================================================================================================
-#Next, let's create our excel report that details the hour differences:
-#region
-
-#ITEMS TO ADD FOR UPDATE!
-#> ONLY HIGHLIGHT RED HOUR DIFFERENCES GREATER THAN 0.25? MAYBE SEE HOW ACCURATE YOUR SYSTEM GPS DATA IS FIRST
-
-#==================================================================================
-#Creating our workbook/sheet objects:
-wb = openpyxl.Workbook()
-wb.save('EquipmentUtilizationReport.xlsx')
-
-#Creating a sheet object: 
-sheet = wb['Sheet']
-
-#==================================================================================
-#Clearing any previous values just in case our current report is shorter than a previous one:
-row=1
-for i in range(0,3000):
-    sheet['A'+str(row)].value = ''
-    sheet['B'+str(row)].value = ''
-    sheet['C'+str(row)].value = ''
-    sheet['D'+str(row)].value = ''
-    sheet['E'+str(row)].value = ''
-    sheet['F'+str(row)].value = ''
-    sheet['G'+str(row)].value = ''
-    sheet['H'+str(row)].value = ''
-    sheet['I'+str(row)].value = ''
+    #Freezing the top row at cell C2 so that the date, equipID, and equip desc are frozen:
+    sheet.freeze_panes = "D2"
 
-    row=row+1
+    #Define a double border for the bottom
+    double_border = Border(bottom=Side(style='double'))
 
+    #Apply the border to each cell in the first row
+    for cell in sheet[1]:  # ws[1] selects the first row
+        cell.border = double_border
 
-#==================================================================================   
-#Defining our report column headers and adding bold font as well as an underlined top row:
 
-sheet['A1'].value = 'Date'
-sheet['A1'].font = Font(bold=True)
-sheet['B1'].value = 'Equipment ID'
-sheet['B1'].font = Font(bold=True)
-sheet['C1'].value = 'Equipment Description'
-sheet['C1'].font = Font(bold=True)
-sheet['D1'].value = 'GPS Hours'
-sheet['D1'].font = Font(bold=True)
-sheet['E1'].value = 'Heavy Job Hours'
-sheet['E1'].font = Font(bold=True)
-sheet['F1'].value = 'Delta'
-sheet['F1'].font = Font(bold=True)
-sheet['G1'].value = 'Primary Location'
-sheet['G1'].font = Font(bold=True)
-sheet['H1'].value = 'Project Manager'
-sheet['H1'].font = Font(bold=True)
-sheet['I1'].value = 'Foreman'
-sheet['I1'].font = Font(bold=True)
+    #==================================================================================   
+    #Adding conditional formatting that highlights red any cells where the GPS hours don't match the HJ hours:
 
-#==================================================================================   
-#Freezing the top row of our report and adding a double border to the bottom:
+    #Define the conditional formatting fill (red background)
+    red_fill = PatternFill(start_color="FF9999", end_color="FF9999", fill_type="solid")
 
-#Freezing the top row at cell C2 so that the date, equipID, and equip desc are frozen:
-sheet.freeze_panes = "D2"
+    #Apply conditional formatting to a specified column (e.g., Column C)
+    column_to_format = "F"  # Change this to your desired column
 
-#Define a double border for the bottom
-double_border = Border(bottom=Side(style='double'))
+    sheet.conditional_formatting.add(
+        f"{column_to_format}2:{column_to_format}10000",  # Applies from row 2 to 100
+        CellIsRule(operator="greaterThan", formula=["0.25"], fill=red_fill)
+    )
 
-#Apply the border to each cell in the first row
-for cell in sheet[1]:  # ws[1] selects the first row
-    cell.border = double_border
+    sheet.conditional_formatting.add(
+        f"{column_to_format}2:{column_to_format}10000",
+        CellIsRule(operator="lessThan", formula=["-0.25"], fill=red_fill)
+    )
 
 
-#==================================================================================   
-#Adding conditional formatting that highlights red any cells where the GPS hours don't match the HJ hours:
+    #==================================================================================
+    #Populating the cells in our excel spreadsheet: 
+    row=2
 
-#Define the conditional formatting fill (red background)
-red_fill = PatternFill(start_color="FF9999", end_color="FF9999", fill_type="solid")
+    #equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
+    for i in range(len(equipmentUtilizationList)):
+        sheet['A'+str(row)].value = equipmentUtilizationList[i][0]
+        sheet['B'+str(row)].value = equipmentUtilizationList[i][1]
+        sheet['C'+str(row)].value = equipmentUtilizationList[i][2]
+        sheet['D'+str(row)].value = equipmentUtilizationList[i][3]
+        sheet['E'+str(row)].value = equipmentUtilizationList[i][4]
+        sheet['F'+str(row)].value = equipmentUtilizationList[i][5]
+        sheet['G'+str(row)].value = equipmentUtilizationList[i][6]
+        sheet['H'+str(row)].value = equipmentUtilizationList[i][7]
+        sheet['I'+str(row)].value = equipmentUtilizationList[i][8]
 
-#Apply conditional formatting to a specified column (e.g., Column C)
-column_to_format = "F"  # Change this to your desired column
+        row=row+1
 
-sheet.conditional_formatting.add(
-    f"{column_to_format}2:{column_to_format}10000",  # Applies from row 2 to 100
-    CellIsRule(operator="greaterThan", formula=["0.25"], fill=red_fill)
-)
 
-sheet.conditional_formatting.add(
-    f"{column_to_format}2:{column_to_format}10000",
-    CellIsRule(operator="lessThan", formula=["-0.25"], fill=red_fill)
-)
 
+    #==================================================================================
+    #Finally, let's save the workbook:
 
-#==================================================================================
-#Populating the cells in our excel spreadsheet: 
-row=2
+    print(equipmentUtilizationList)
 
-#equipmentUtilizationList.append([entryDate, entryEquipID, entryEquipDescription, round(entryGPShours,2), round(heavyJobHours,2), round(hourDelta,2), primaryLocation, 'Project Manager', foreman])
-for i in range(len(equipmentUtilizationList)):
-    sheet['A'+str(row)].value = equipmentUtilizationList[i][0]
-    sheet['B'+str(row)].value = equipmentUtilizationList[i][1]
-    sheet['C'+str(row)].value = equipmentUtilizationList[i][2]
-    sheet['D'+str(row)].value = equipmentUtilizationList[i][3]
-    sheet['E'+str(row)].value = equipmentUtilizationList[i][4]
-    sheet['F'+str(row)].value = equipmentUtilizationList[i][5]
-    sheet['G'+str(row)].value = equipmentUtilizationList[i][6]
-    sheet['H'+str(row)].value = equipmentUtilizationList[i][7]
-    sheet['I'+str(row)].value = equipmentUtilizationList[i][8]
+    wb.save('EquipmentUtilizationReport.xlsx')
 
-    row=row+1
 
+    #endregion
 
 
-#==================================================================================
-#Finally, let's save the workbook:
+    #===============================================================================================================================================================
+    #Finally, sending our email:
+    #region
 
-print(equipmentUtilizationList)
+    print('Generating email and sending to relevant DDM employees...')
 
-wb.save('EquipmentUtilizationReport.xlsx')
+    #==================================================================================
+    #First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
+    startDate = dates[0]
+    endDate = dates[-1]
 
 
-#endregion
+    #==================================================================================
+    #Next, building the email:
+    import smtplib
+    from email.message import EmailMessage
 
+    conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
+    #the ehlo function actually connects you to the server
+    conn.ehlo()
+    #starting the tls encryption to protect our password
+    conn.starttls()
+    #now that we are connected, let's login
+    conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
 
-#===============================================================================================================================================================
-#Finally, sending our email:
-#region
+    newMessage = EmailMessage()    #creating an object of EmailMessage class
+    newMessage['Subject'] = "Equipment Hour Correction Audit for {} through {}".format(startDate, endDate) #Defining email subject
+    newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
+    #newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
+    newMessage['To'] = 'collin@ddmcc.net, pyramidconstructionsupply@outlook.com'  #Defining reciever email
 
-print('Generating email and sending to relevant DDM employees...')
+    #Now let's build the string to be added to our email message!
+    emailcontentstring = 'Hello DDM Team,\n\nPlease see attached for the updated equipment hour audit report for {} through {}. Please make any and all listed corrections as soon as possible.\n\nThis is an automated email, so any direct replies may go unread. If you have any questions, please hit "Reply All" or make sure that Derek, Blake, and Collin are included on your email response.'.format(startDate, endDate)
 
-#==================================================================================
-#First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
-startDate = dates[0]
-endDate = dates[-1]
+    newMessage.set_content(emailcontentstring)
 
 
-#==================================================================================
-#Next, building the email:
-import smtplib
-from email.message import EmailMessage
+    #==================================================================================
+    #Finally, attaching our excel report and sending this email
 
-conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
-#the ehlo function actually connects you to the server
-conn.ehlo()
-#starting the tls encryption to protect our password
-conn.starttls()
-#now that we are connected, let's login
-conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
+    #Converting the excel file into binary format so that we can attach it to our email:
+    def convert_into_binary(file_path):
+        with open(file_path, 'rb') as file:
+            binary = file.read()
+        return binary
 
-newMessage = EmailMessage()    #creating an object of EmailMessage class
-newMessage['Subject'] = "Equipment Hour Correction Audit for {} through {}".format(startDate, endDate) #Defining email subject
-newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
-#newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
-newMessage['To'] = 'collin@ddmcc.net, pyramidconstructionsupply@outlook.com'  #Defining reciever email
+    excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
 
-#Now let's build the string to be added to our email message!
-emailcontentstring = 'Hello DDM Team,\n\nPlease see attached for the updated equipment hour audit report for {} through {}. Please make any and all listed corrections as soon as possible.\n\nThis is an automated email, so any direct replies may go unread. If you have any questions, please hit "Reply All" or make sure that Derek, Blake, and Collin are included on your email response.'.format(startDate, endDate)
+    #Adding the excel report as an attachment:
+    newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit ({} through {}).xlsx'.format(startDate, endDate))
 
-newMessage.set_content(emailcontentstring)
+    #Sending the email:
+    conn.send_message(newMessage)
 
+    #When you're done just call the quit method to end the connection
+    conn.quit()
 
-#==================================================================================
-#Finally, attaching our excel report and sending this email
 
-#Converting the excel file into binary format so that we can attach it to our email:
-def convert_into_binary(file_path):
-    with open(file_path, 'rb') as file:
-        binary = file.read()
-    return binary
+    print('SUCCESS')
 
-excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
 
-#Adding the excel report as an attachment:
-newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit ({} through {}).xlsx'.format(startDate, endDate))
+    #endregion
 
-#Sending the email:
-conn.send_message(newMessage)
 
-#When you're done just call the quit method to end the connection
-conn.quit()
+#If the current status is "NOT Ready to Send", then we will generate an email stating that this report failed to send:
+else:
+    print('Equipment Utilization Report status is "NOT Ready to Send". Sending a notification that it is not ready...')
 
+    #==================================================================================
+    #First, let's use our "dates" list defined at the top of this script to return the first/last date that this report is covering:
+    from datetime import datetime, timedelta
 
-print('SUCCESS')
+    def generate_week_dates():
+        today = datetime.today()
+        if today.weekday() == 0:  # Check if today is Monday
+            monday_prior = today - timedelta(days=7)  # Get the Monday of the previous week
+        else:
+            monday_prior = today - timedelta(days=today.weekday())  # Get the most recent Monday
+        
+        week_dates = [(monday_prior + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+        return week_dates
 
 
-#endregion
+    dates = generate_week_dates()
+
+    startDate = dates[0]
+    endDate = dates[-1]
+
+
+    #==================================================================================
+    #Next, building the email:
+    import smtplib
+    from email.message import EmailMessage
+
+    conn = smtplib.SMTP('smtp-mail.outlook.com', 587)
+    #the ehlo function actually connects you to the server
+    conn.ehlo()
+    #starting the tls encryption to protect our password
+    conn.starttls()
+    #now that we are connected, let's login
+    conn.login('automatedreporting@ddmcc.net', 'CG@ddm92')
+
+    newMessage = EmailMessage()    #creating an object of EmailMessage class
+    newMessage['Subject'] = "FAILED TO SEND! Equipment Hour Correction Audit for {} through {}".format(startDate, endDate) #Defining email subject
+    newMessage['From'] = 'automatedreporting@ddmcc.net'  #Defining sender email
+    #newMessage['To'] = 'jroden@ddmcc.net, rbeltran@ddmcc.net, tyoes@ddmcc.net, gtrabazo@ddmcc.net, collin@ddmcc.net, bkuecker@ddmcc.net, zack@ddmcc.net, mruez@ddmcc.net, croberts@ddmcc.net, jderiso@ddmcc.net, bpoeschl@ddmcc.net, rlow@ddmcc.net, msoto@ddmcc.net, ggonzalez@ddmcc.net, fcoutee@ddmcc.net, RBandeira@ddmcc.net, rreyes@ddmcc.net, MBartos@ddmcc.net, Abernard@ddmcc.net, DDodson@ddmcc.net, droot@ddmcc.net'  #Defining reciever email
+    newMessage['To'] = 'collin@ddmcc.net, pyramidconstructionsupply@outlook.com'  #Defining reciever email
+
+    #Now let's build the string to be added to our email message!
+    emailcontentstring = 'Hello Collin,\n\nThe equipment hour audit report for {} through {} has failed to send due to an error with the data update process. See below for the error description:\n\n=> {}'.format(startDate, endDate, errorDescription)
+
+    newMessage.set_content(emailcontentstring)
+
+
+    #==================================================================================
+    #Finally, attaching our excel report and sending this email
+
+    #Converting the excel file into binary format so that we can attach it to our email:
+    def convert_into_binary(file_path):
+        with open(file_path, 'rb') as file:
+            binary = file.read()
+        return binary
+
+    excelreport = convert_into_binary("EquipmentUtilizationReport.xlsx")
+
+    #Adding the excel report as an attachment:
+    newMessage.add_attachment(excelreport, maintype='application', subtype='pdf', filename='Equipment Hour Correction Audit ({} through {}).xlsx'.format(startDate, endDate))
+
+    #Sending the email:
+    conn.send_message(newMessage)
+
+    #When you're done just call the quit method to end the connection
+    conn.quit()
+
+
+    print('SUCCESS')
