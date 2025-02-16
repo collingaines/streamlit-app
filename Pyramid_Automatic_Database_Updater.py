@@ -481,7 +481,6 @@ print('SUCCESS')
 print('<========================================================================================================================>')
 print('<Updating the "Equipment_Inspection_Log" Database Table: Updating this database table with data from the smartsheet "DDM Equipment Inspections 1.0">')
 print('<========================================================================================================================>')
-print('Connecting to the Smartsheet API and pulling data from the "Equipment Inspection" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -493,6 +492,8 @@ try:
     #Deleting all existing entries in our Supabase "Equipment_Inspection_Log" database table:
     #region 
 
+    print('Deleting all existing entries in our Supabase Equipment_Inspection_Log database table...')
+
     def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
         # Create a Supabase client
         supabase: Client = create_client(supabase_url, supabase_key)
@@ -502,6 +503,8 @@ try:
                                 
     truncate_table(supabase_url, supabase_key, 'Equipment_Inspection_Log')
 
+    print('<SUCCESS>')
+
     #endregion
 
 
@@ -509,8 +512,12 @@ try:
     #Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet
     #region 
 
+    print('Connecting to the smartsheet api and pulling data from the equipment inspection smartsheet...')
+
     #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
     MySheet = smart.Sheets.get_sheet('8508814782687108')
+
+    print('<SUCCESS>')
 
     #endregion
 
@@ -518,6 +525,8 @@ try:
     #==========================================================================================================================================================================
     #Now, let's itterate through each of the smartsheet rows and add the values to a list which we can send to our database: 
     #region 
+
+    print('Itterating through each of the smartsheet rows and add the values to a list which we can send to our database...')
 
     dbEntryList = []
     rowcount = 1
@@ -645,10 +654,14 @@ try:
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = '"Equipment_Inspection_Log" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Equipment_Inspection_Log" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Equipment_Inspection_Log" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -660,7 +673,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Equipment_Asset_List" Database Table: Updating this database table with data from our "Master Equipment List" Smartsheet>')
 print('<========================================================================================================================>')
-print('Connecting to the Smartsheet API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -672,6 +684,8 @@ try:
     #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
     #region
 
+    print('Deleting all existing entries in our Supabase Cost_Code_Classifiers database table...')
+
     def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
         # Create a Supabase client
         supabase: Client = create_client(supabase_url, supabase_key)
@@ -681,12 +695,16 @@ try:
                                 
     truncate_table(supabase_url, supabase_key, 'Master_Equipment_Asset_List')
 
+    print('<SUCCESS>')
+
     #endregion
 
 
     #==========================================================================================================================================================
     #First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
     #region
+
+    print('Pulling all of the updated equipment info from our Master Equipment List smartsheet and add the values to a list')
 
     #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
     MySheet = smart.Sheets.get_sheet('1336754816634756')
@@ -756,10 +774,14 @@ try:
 
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = '"Master_Equipment_Asset_List" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master_Equipment_Asset_List" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master_Equipment_Asset_List" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -772,7 +794,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating Smartsheet Equipment Inspection & Fuel Log Dropdown Data>')
 print('<========================================================================================================================>')
-print('Connecting to the Smartsheet API and updating dropdown lists...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -782,6 +803,8 @@ try:
     #==========================================================================================================================================================
     #First, let's pull all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list:
     #region
+
+    print('Pulling all of the updated equipment info from our "Master Equipment List" smartsheet and add the values to a list')
 
     #Creating a sheet object for the smartsheet that we want to read data from, and passing it the sheet id which can be found by looking on the sheet properties on smartsheet (File>Properties>Sheet ID:)
     MySheet = smart.Sheets.get_sheet('1336754816634756')
@@ -807,12 +830,16 @@ try:
     #Sorting the equipment IDs so that they are in alphabetical order: 
     equipmentInfoList=sorted(equipmentInfoList, key=lambda x: x[0])
 
+    print('<SUCCESS>')
+
     #endregion
 
 
     #==========================================================================================================================================================
     #Next, let's navigate to our equipment inspection sheet and update the list of dropdown values:
     #region
+
+    print('Navigating to our equipment inspection sheet and update the list of dropdown values')
 
     #TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
 
@@ -842,6 +869,8 @@ try:
 
     #print(f"Updated Dropdown List: {new_options}")
 
+    print('<SUCCESS>')
+
     #endregion
 
 
@@ -849,6 +878,7 @@ try:
     #Next, let's navigate to our equipment fuel log smartsheet and update the list of dropdown values:
     #region
 
+    print('Navigate to our equipment fuel log smartsheet and update the list of dropdown values...')
 
     #TEMPORARY: THIS SCRIPT WILL UPDATE A DROPDOWN ON THE MASTER LIST AS A TEST
 
@@ -887,10 +917,14 @@ try:
 
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = 'Failure to Update the "Master Equipment List" and "Heavy Equipment Fuel Log" Smartsheet Dropdowns in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master Equipment List" and "Heavy Equipment Fuel Log" Smartsheet dropdowns in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master Equipment List" and "Heavy Equipment Fuel Log" Smartsheet dropdowns in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -902,7 +936,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Project_Info_List" Database Table & "Master Project Info List" Smartsheet: Connecting to the HCSS API, pulling all of our project data, and updating our database table and smartsheet>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and updating our "Master_Project_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -914,6 +947,7 @@ try:
     #First, let's pull our project data from our smartsheet and update our database:
     #region 
 
+    print('Pulling our project data from our smartsheet and update our database...')
 
     #============================================================================
     #Pulling data from our smartsheet and saving it to a list
@@ -1001,12 +1035,17 @@ try:
         #Using the "insert_data" function defined at the top of this script
         insert_response = insert_data(data_to_insert)
 
+    print('<SUCCESS>')
+
     #endregion
 
 
     #==============================================================================================================================================================================================
     #Next, pulling the most recent project data from our HCSS API:
     #region
+
+    print('Pulling the most recent project data from our HCSS API...')
+
 
     #============================================
     #Connecting to the timecard endpoint of the HCSS API:
@@ -1070,6 +1109,7 @@ try:
 
             projectInfoList.append([hcssID, legacyID, jobNum, jobDescription, createdDate, status, lattitude, longitude, address1, address2, city, state, zip])
 
+    print('<SUCCESS>')
 
     #endregion
 
@@ -1077,6 +1117,8 @@ try:
     #==============================================================================================================================================================================================
     #Creating a list of projects from our HCSS API data that ARE NOT currently in our smartsheet:
     #region
+
+    print('Creating a list of projects from our HCSS API data that ARE NOT currently in our smartsheet')
 
     #============================================================================
     #First, let's create a list of all projects currently in our smartsheet using our "smartSheetProjectInfoList" created above, and while we're at it store each project's status in a dictionary:
@@ -1115,7 +1157,7 @@ try:
             newProjectInfoList.append([projectInfoList[i][0], projectInfoList[i][1], projectInfoList[i][2], projectInfoList[i][3], projectInfoList[i][4], projectInfoList[i][5], projectInfoList[i][6], projectInfoList[i][7], projectInfoList[i][8], projectInfoList[i][9], projectInfoList[i][10], projectInfoList[i][11], projectInfoList[i][12]])
 
 
-
+    print('<SUCCESS>')
 
 
     #endregion
@@ -1124,6 +1166,8 @@ try:
     #==============================================================================================================================================================================================
     #Updating our "Master Project Information List" database table with any new entries identified in the previous step:
     #region
+
+    print('Updating our Master Project Information List database table with any new entries identified in the previous step')
 
     #=================================================================================================
     #Let's calculate what the starting ID value shoudl be so we don't run into any primary key database issues:
@@ -1171,12 +1215,16 @@ try:
         #Using the "insert_data" function defined at the top of this script
         insert_response = insert_data(data_to_insert)
 
+    print('<SUCCESS>')
+
     #endregion
 
 
     #==============================================================================================================================================================================================
     #Updating our "Master Project Information List" Smartsheet with our newly updated database values:
     #region
+
+    print('Updating our Master Project Information List Smartsheet with our newly updated database values...')
 
     #=================================================================================================
     #First, let's clear all of the existing values from our smartsheet using the 'delete all rows' function defined at the top of this script:
@@ -1229,7 +1277,7 @@ try:
     #Add rows to the sheet
     response = smart.Sheets.add_rows(SHEET_ID, newRowList)
 
-
+    print('<SUCCESS>')
 
     #endregion
 
@@ -1241,10 +1289,14 @@ try:
     print(f"CODE BLOCK RUNTIME = {format_time(elapsed_time)}")
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = 'Failure to Update the "Master_Project_Information" Database and "Master Equipment List" Smartsheet in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master_Project_Information" Database and "Master Equipment List" Smartsheet in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master_Project_Information" Database and "Master Equipment List" Smartsheet in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -1256,7 +1308,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Timecard_Information" Database Table: Connecting to the HCSS API, pulling all of our timecard data, and updating our database tables>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and updating our "Master_Timecard_Information" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -1267,6 +1318,8 @@ try:
     #==============================================================================================================================================================================================
     #First, let's create a dictionary that ties the project HCSS API ID to a project name for use when updating our database
     #region
+
+    print('create a dictionary that ties the project HCSS API ID to a project name for use when updating our database')
 
     #=================================
     #Pulling our vlaues from our supabase database table using the "fetch_data_from_table" function defined at the top of this page:
@@ -1294,12 +1347,17 @@ try:
 
         userCraftDict[employeeID]=employeeCraft
 
+
+    print('<SUCCESS>')
+
     #endregion
 
 
     #==============================================================================================================================================================================================
     #Creating a list of timecard values for use later in calculating the timecard values for each foreman:
     #region
+
+    print('Creating a list of timecard values for use later in calculating the timecard values for each foreman')
 
     #============================================================================
     #Connecting to the timecard endpoint of the HCSS API:
@@ -1459,6 +1517,8 @@ try:
     #Next, let's update our "Master_Timecard_Information" database:
     #region
 
+    print('Updating our Master_Timecard_Information database...')
+
     #============================================================================
     #Deleting all existing entries in our Supabase "Cost_Code_Classifiers" database table:
     def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
@@ -1526,10 +1586,14 @@ try:
 
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = 'Failure to Update the "Master_Timecard_Information" Database in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master_Timecard_Information" database in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master_Timecard_Information" database in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -1541,7 +1605,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Equipment_GPS_Data" & "Equipment_GPS_All_Data" Database Tables: Connecting to the HCSS API, pulling all of our GPS hour/location data, and updating our database tables>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and updating our "Equipment_GPS_All_Data" and "Master_Equipment_GPS_Data" database table...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -2065,10 +2128,14 @@ try:
     
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script. We will also want to update our "Report_Status_Tracking" database table if applicable:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = 'Failure to Update the "Equipment_GPS_All_Data" Database and "Master_Equipment_GPS_Data" in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Equipment_GPS_All_Data" database table and "Master_Equipment_GPS_Data" database table in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Equipment_GPS_All_Data" database table and "Master_Equipment_GPS_Data" database table in the "Hourly API Data Fetcher" Github workflow failed. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -2083,7 +2150,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Equipment_Timecard_Data" & "Equipment_Timecard_All_Data" Database Tables: Connecting to the HCSS API, pulling all of our equipment hour data, and updating our database tables>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -2094,6 +2160,9 @@ try:
     #==============================================================================================================================================================================================
     #Pulling the Heavy Job Equipment data from the HCSS API and updating our "Equipment GPS All Data" database
     #region
+
+    print('Pulling the Heavy Job Equipment data from the HCSS API and updating our Equipment_GPS_All_Data database table')
+
 
     #===============================================================================================
     #Connecting to the timecard endpoint of the HCSS API:
@@ -2363,6 +2432,7 @@ try:
         insert_response = insert_data(data_to_insert)
 
 
+    print('<SUCCESS>')
 
     #endregion
 
@@ -2371,6 +2441,7 @@ try:
     #Next, let's consolidate our equipment hour entries and enter them into our "Master_Equipment_Timecard_Data" database table:
     #region
 
+    print('Consolidate our equipment hour entries and enter them into our Master_Equipment_Timecard_Data database table')
 
     #=================================================================================================
     #First, let's iterate through our list of equipment hour data created above and create a dictionary that sums the total hours for each piece of equipment/date:
@@ -2464,10 +2535,14 @@ try:
 
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = '"Master_Equipment_Timecard_Data" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master_Equipment_Timecard_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -2482,7 +2557,6 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Master_Equipment_Utilization_Data" Database Table: Using our "Master_Equipment_Timecard_Data" and "Master_Equipment_GPS_Data" database tables to perform our equipment utilization calcs>')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
 start_time = time.time()
@@ -2508,7 +2582,7 @@ try:
     # Generate list of dates for the past 14 days (including today)
     dates = [(current_date - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15)]
 
-    print('SUCCESS')
+    print('<SUCCESS>')
 
     #endregion
 
@@ -2517,6 +2591,7 @@ try:
     #Next, let's create a list of all GPS data for each piece of equipment/date included in this week:
     #region
 
+    print('Creating a list of all GPS data for each piece of equipment/date included in this week...')
 
     #==================================================================================
     #First, let's write a function that returns the day of the week when given a date. We only want to charge equipment with a charge type of 8HRS/DAY on weekdays:
@@ -2627,6 +2702,7 @@ try:
 
                     idCheckList.append(entryEquipID)
 
+    print('<SUCCESS>')
 
     #==================================================================================
     #Next, create a list of values that includes GPS hours for ALL equipment we want to see our on our report:
@@ -2668,6 +2744,7 @@ try:
     #Next, let's iterate through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list:
     #region
 
+    print('Iterating through our list of GPS hours, pull the corresponding Heavy Job timecard data, calculate the difference, and create a list')
 
     #==================================================================================
     #First, let's build a project/project manager dictionary using our Project Info smartsheet!
@@ -2810,6 +2887,7 @@ try:
     #Next, let's update our databse table:
     #region
 
+    print('Updating our Master_Equipment_Utilization_Data database table...')
 
     #============================================================================
     #First, let's delete any rows in this table that are in our list of dates for this period:
@@ -2886,10 +2964,14 @@ try:
     equipmentUtilizationDataUpdateSuccessStatus = 'Successful'
 
 #If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
-except:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
+
     recipient = 'collin@ddmcc.net'
     subject = '"Master_Equipment_Utilization_Data" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
-    emailBody = 'Your script for updating the "Master_Equipment_Utilization_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information.'
+    emailBody = 'Your script for updating the "Master_Equipment_Utilization_Data" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
     
     sendEmail(recipient, subject, emailBody)
 
@@ -2905,139 +2987,189 @@ except:
 print('<========================================================================================================================>')
 print('<Updating the "Report_Status_Tracking" Database Table: Using variables defined throughout this script to determine if certain reports are ready to send or not')
 print('<========================================================================================================================>')
-print('Connecting to the HCSS API and pulling data from the "Equipment Master List" sheet...')
 #region CLICK HERE TO EXPAND THIS SECTION
 
+start_time = time.time()
 
-#==============================================================================================================================================================================================
-#FIRST, let's delete all of the existing entries in the "Report_Status_Tracking" as we are about to overwrite them in this section of the script:
-#region
+#Initiating our "try" statment so that if this section of our data updater breaks, the rest of the sections will update data normally:
+try:
 
-#============================================================================
-#First, let's delete any rows in this table that are for our current date
-def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
-    # Create a Supabase client
-    supabase: Client = create_client(supabase_url, supabase_key)
-                                
-    # Truncate the specified table
-    response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
-                                
-truncate_table(supabase_url, supabase_key, "Report_Status_Tracking")
+    #==============================================================================================================================================================================================
+    #FIRST, let's delete all of the existing entries in the "Report_Status_Tracking" as we are about to overwrite them in this section of the script:
+    #region
 
-#============================================================================
-#Defining our rowcount value to be 1. This wil be added to for each section of this script:
-rowcount=1
+    print('Deleting existing entries in the Report_Status_Tracking database table...')
 
-#endregion
+    #============================================================================
+    #First, let's delete any rows in this table that are for our current date
+    def truncate_table(supabase_url: str, supabase_key: str, table_name: str):
+        # Create a Supabase client
+        supabase: Client = create_client(supabase_url, supabase_key)
+                                    
+        # Truncate the specified table
+        response = supabase.rpc('truncate_table', {'table_name': table_name}).execute()
+                                    
+    truncate_table(supabase_url, supabase_key, "Report_Status_Tracking")
+
+    #============================================================================
+    #Defining our rowcount value to be 1. This wil be added to for each section of this script:
+    rowcount=1
+
+    print('<SUCCESS>')
+
+    #endregion
+
+    #==============================================================================================================================================================================================
+    #Next, let's create a variable for today's date/time in US central time for used when updating our status date in our table:
+    #region
+
+    print('Creating a variable for the current date/time in US central time...')
+
+    from datetime import datetime
+    import pytz
+
+    def get_central_time():
+        central_tz = pytz.timezone('America/Chicago')
+        central_time = datetime.now(central_tz)
+        return central_time.strftime('%Y-%m-%d %H:%M:%S %Z')
+
+    todayDateTime = get_central_time()
+
+    print('<SUCCESS>')
+
+    #endregion
+
+    #==============================================================================================================================================================================================
+    #Upating the "Equipment Utilization Report" status in our "Report_Status_Tracking" database table:
+    #region
+
+    print('Updating the status of the Equipment Utilization Report...')
 
 
-#==============================================================================================================================================================================================
-#Upating the "Equipment Utilization Report" status in our "Report_Status_Tracking" database table:
-#region
+    #============================================================================
+    #Determining the report status for this report using the variables defined throughout this script:
+
+    #==============================
+    #If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
+    if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
+        currentStatus='Ready To Send'
+        errorDescription='None'
+
+    #==============================
+    #If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
+    else:
+        currentStatus='NOT Ready To Send'
+
+        errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
 
 
-#============================================================================
-#Determining the report status for this report using the variables defined throughout this script:
+    #============================================================================
+    #Finally, let's update our database:
 
-#==============================
-#If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
-if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
+    #==============================
+    #Function to insert data into the "Master_Equipment_GPS_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
+        return response
+
+
+    #==============================
+    #Inserting the data into our Supabase database table:
+    data_to_insert = {
+        'id':rowcount,
+        'reportName':'equipmentUtilizationReport',
+        'currentStatus':currentStatus,
+        'errorDescription':errorDescription,
+        'errorDate':todayDateTime
+
+    }
+
+    #==============================
+    #Using the "insert_data" function defined at the top of this script
+    insert_response = insert_data(data_to_insert)
+
+    rowcount=rowcount+1
+
+    print('<SUCCESS>')
+
+    #endregion
+
+
+    #==============================================================================================================================================================================================
+    #Upating the "Weekly Paperwork Report" status in our "Report_Status_Tracking" database table:
+    #region
+
+    print('Updating the status of the Weekly Paperwork Report...')
+
+    #============================================================================
+    #Determining the report status for this report using the variables defined throughout this script:
+
+    #==============================
+    #If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
+    # if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
+    #     currentStatus='Ready To Send'
+    #     errorDescription='None'
+
+    #==============================
+    #If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
+    # else:
+    #     currentStatus='NOT Ready To Send'
+
+    #     errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
+
+
+    #CHANGE THIS BLOCK OF CODE ONCE YOU ACTUALLY ARE READY FOR THIS REPORT TO START SENDING!
     currentStatus='Ready To Send'
     errorDescription='None'
 
-#==============================
-#If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
-else:
-    currentStatus='NOT Ready To Send'
 
-    errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
+    #============================================================================
+    #Finally, let's update our database:
 
-
-#============================================================================
-#Finally, let's update our database:
-
-#==============================
-#Function to insert data into the "Master_Equipment_GPS_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
-    return response
+    #==============================
+    #Function to insert data into the "Master_Equipment_GPS_Data" table
+    def insert_data(data: dict):
+        response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
+        return response
 
 
-#==============================
-#Inserting the data into our Supabase database table:
-data_to_insert = {
-    'id':rowcount,
-    'reportName':'equipmentUtilizationReport',
-    'currentStatus':currentStatus,
-    'errorDescription':errorDescription,
-    'errorDate':todayCentral
+    #==============================
+    #Inserting the data into our Supabase database table:
+    data_to_insert = {
+        'id':rowcount,
+        'reportName':'weeklyPaperworkReport',
+        'currentStatus':currentStatus,
+        'errorDescription':errorDescription,
+        'errorDate':todayDateTime
 
-}
+    }
 
-#==============================
-#Using the "insert_data" function defined at the top of this script
-insert_response = insert_data(data_to_insert)
+    #==============================
+    #Using the "insert_data" function defined at the top of this script
+    insert_response = insert_data(data_to_insert)
 
-rowcount=rowcount+1
+    rowcount=rowcount+1
 
-#endregion
-
-
-#==============================================================================================================================================================================================
-#Upating the "Weekly Paperwork Report" status in our "Report_Status_Tracking" database table:
-#region
-
-#============================================================================
-#Determining the report status for this report using the variables defined throughout this script:
-
-#==============================
-#If all of the data updates were successful, then we will assign a status that this report is "Ready to Send":
-# if equipmentTimecardDataUpdateSuccessStatus=='Successful' and equipmentGPSDataUpdateSuccessStatus=='Successful' and equipmentUtilizationDataUpdateSuccessStatus=='Successful':
-#     currentStatus='Ready To Send'
-#     errorDescription='None'
-
-#==============================
-#If not, then we will want to assign a status indicating that the report is NOT ready to send and provide an error description
-# else:
-#     currentStatus='NOT Ready To Send'
-
-#     errorDescription='One or more data updates in the "Pyramid_Automatic_Database_Updater" failed to run ==> Equipment Timecard Data Update: {} | Equipment GPS Data Update: {} | Equipment Utilization Data Update: {}'.format(equipmentTimecardDataUpdateSuccessStatus, equipmentGPSDataUpdateSuccessStatus, equipmentUtilizationDataUpdateSuccessStatus)
+    print('<SUCCESS>')
 
 
-#CHANGE THIS BLOCK OF CODE ONCE YOU ACTUALLY ARE READY FOR THIS REPORT TO START SENDING!
-currentStatus='Ready To Send'
-errorDescription='None'
+    #endregion
 
 
-#============================================================================
-#Finally, let's update our database:
+#If there is an error in this section of our data updater, let's send an email with an error message and proceed with our script:
+except Exception as e:
+    print('<FAILURE>')
+    errorMessage = str(e)
+    print(errorMessage)
 
-#==============================
-#Function to insert data into the "Master_Equipment_GPS_Data" table
-def insert_data(data: dict):
-    response = supabase_client.table('Report_Status_Tracking').insert(data).execute()
-    return response
+    recipient = 'collin@ddmcc.net'
+    subject = '"Report_Status_Tracking" Database Update Failure in the "Hourly API Data Fetcher" Github Workflow'
+    emailBody = 'Your script for updating the "Report_Status_Tracking" database table failed in the "Hourly API Data Fetcher" Github workflow. See the workflow log in Github for more information, or see error message below:\n\n{}.'.format(errorMessage)
+    
+    sendEmail(recipient, subject, emailBody)
 
+    
 
-#==============================
-#Inserting the data into our Supabase database table:
-data_to_insert = {
-    'id':rowcount,
-    'reportName':'weeklyPaperworkReport',
-    'currentStatus':currentStatus,
-    'errorDescription':errorDescription,
-    'errorDate':todayCentral
-
-}
-
-#==============================
-#Using the "insert_data" function defined at the top of this script
-insert_response = insert_data(data_to_insert)
-
-rowcount=rowcount+1
-
-
-#endregion
 
 
 #endregion
